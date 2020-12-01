@@ -23,8 +23,10 @@ fn main() {
     let numbers = read_numbers();
     for x in &numbers {
         for y in &numbers {
-            if x + y == 2020 {
-                println!("{} {}", x, y);
+            for z in &numbers {
+                if x + y + z == 2020 {
+                    println!("{} {} {}", x, y, z);
+                }
             }
         }
     }

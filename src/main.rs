@@ -42,9 +42,7 @@ fn main() {
 
     let re = Regex::new(r"^(?P<min>[\d]+)-(?P<max>[\d]+) (?P<char>.): (?P<pw>.*)$").unwrap();
 
-    let mut valid = 0;
-
-    for pwline in &lines {
+    let result = lines.iter().filter(|pwline| {
         let captures = re.captures(pwline).unwrap();
 
         println!("{:#?}", captures);
@@ -59,10 +57,8 @@ fn main() {
 
         println!("{} {} {} {:#?} - {} {}", min, max, kar, pw, nh, xh);
 
-        if nh != xh {
-            valid += 1;
-        }
-    }
+        nh != xh
+    }).count();
 
-    println!("{}", valid);
+    println!("{}", result);
 }

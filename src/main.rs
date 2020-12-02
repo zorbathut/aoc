@@ -49,15 +49,17 @@ fn main() {
 
         println!("{:#?}", captures);
 
-        let min = captures.name("min").unwrap().as_str().parse::<i32>().unwrap();
-        let max = captures.name("max").unwrap().as_str().parse::<i32>().unwrap();
-        let kar = captures.name("char").unwrap().as_str();
+        let min = captures.name("min").unwrap().as_str().parse::<usize>().unwrap();
+        let max = captures.name("max").unwrap().as_str().parse::<usize>().unwrap();
+        let kar = captures.name("char").unwrap().as_str().chars().nth(0).unwrap();
         let pw = captures.name("pw").unwrap().as_str();
 
-        let counted = pw.matches(kar).count() as i32;
+        let nh = pw.chars().nth(min - 1).unwrap_or(':') == kar;
+        let xh = pw.chars().nth(max - 1).unwrap_or(':') == kar;
 
-        println!("{}: {} {} {} {}: {}", pwline, min, max, kar, pw, counted);
-        if counted >= min && counted <= max {
+        println!("{} {} {} {:#?} - {} {}", min, max, kar, pw, nh, xh);
+
+        if nh != xh {
             valid += 1;
         }
     }

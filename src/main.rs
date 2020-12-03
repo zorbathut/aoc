@@ -40,16 +40,29 @@ fn read_lines() -> Vec<String> {
 fn main() {
     let lines = read_lines();
 
-    let mut x = 0;
-    let mut trees = 0;
-    for line in lines {
-        let spot = line.bytes().nth(x % line.len()).unwrap();
-        if spot == '#' as u8 {
-            trees += 1;
+    let mut dx: [usize; 5] = [1, 3, 5, 7, 1];
+    let mut dy: [usize; 5] = [1, 1, 1, 1, 2];
+
+    let mut accum: i64 = 1;
+
+    for i in 0..dx.len() {
+        let mut x = 0;
+        let mut y = 0;
+
+        let mut trees = 0;
+
+        while y < lines.len() {
+            let spot = lines[y].bytes().nth(x % lines[y].len()).unwrap();
+            if spot == '#' as u8 {
+                trees += 1;
+            }
+
+            x += dx[i];
+            y += dy[i];
         }
 
-        x += 3;
+        accum *= trees;
     }
     
-    dbg!(trees);
+    dbg!(accum);
 }

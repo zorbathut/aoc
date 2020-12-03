@@ -40,25 +40,16 @@ fn read_lines() -> Vec<String> {
 fn main() {
     let lines = read_lines();
 
-    let re = Regex::new(r"^(?P<min>[\d]+)-(?P<max>[\d]+) (?P<char>.): (?P<pw>.*)$").unwrap();
+    let mut x = 0;
+    let mut trees = 0;
+    for line in lines {
+        let spot = line.bytes().nth(x % line.len()).unwrap();
+        if spot == '#' as u8 {
+            trees += 1;
+        }
 
-    let result = lines.iter().filter(|pwline| {
-        let captures = re.captures(pwline).unwrap();
-
-        println!("{:#?}", captures);
-
-        let min = captures.name("min").unwrap().as_str().parse::<usize>().unwrap();
-        let max = captures.name("max").unwrap().as_str().parse::<usize>().unwrap();
-        let kar = captures.name("char").unwrap().as_str().chars().nth(0).unwrap();
-        let pw = captures.name("pw").unwrap().as_str();
-
-        let nh = pw.chars().nth(min - 1).unwrap_or(':') == kar;
-        let xh = pw.chars().nth(max - 1).unwrap_or(':') == kar;
-
-        println!("{} {} {} {:#?} - {} {}", min, max, kar, pw, nh, xh);
-
-        nh != xh
-    }).count();
-
-    println!("{}", result);
+        x += 3;
+    }
+    
+    dbg!(trees);
 }

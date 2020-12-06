@@ -4,6 +4,7 @@ use std::cmp;
 use regex::Regex;
 use std::collections::HashSet;
 use std::collections::HashMap;
+use std::iter::FromIterator;
 
 #[macro_use] extern crate scan_fmt;
 
@@ -16,7 +17,6 @@ fn read_numbers() -> Vec<i32> {
             Ok(0) => return rv,
             Ok(_) => {
                 input = input.trim().to_string();
-                println!("{:#?}", input);
                 rv.push(input.parse::<i32>().unwrap());
             },
             Err(_) => return rv,
@@ -46,28 +46,30 @@ fn main() {
 
     let mut best = 0;
 
-    let mut seats = HashSet::new();
+    let mut first = true;
+    let mut seats: HashSet<char> = HashSet::new();
 
     for line in lines {
         println!("{:#?}", line);
 
-        let mut pos = 0;
-
-        for kar in line.chars() {
-            pos <<= 1;
-
-            if kar == 'B' || kar == 'R' {
-                pos += 1;
+        if line.len() == 0 {
+            best += seats.len();
+            println!("ADD: {:#?}", seats.len());
+            seats.clear();
+            first = true;
+        } else if first {
+            for kar in line.chars() {
+                seats.insert(kar);
             }
-        }
+            first = false;
+        } else {
+            let mut seatsb: HashSet<char> = HashSet::new();
+            for kar in line.chars() {
+                seatsb.insert(kar);
+            }
 
-        best = cmp::max(best, pos);
-        seats.insert(pos);
-    }
-
-    for i in 1..2000 {
-        if seats.contains(&(i - 1)) && seats.contains(&(i + 1)) && !seats.contains(&i) {
-            println!("{}", i);
+            seats = seats.intersection(&seatsb).copied().collect();
+            println!("SEE: {:#?}", seats);
         }
     }
 

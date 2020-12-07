@@ -41,49 +41,29 @@ fn read_lines() -> Vec<String> {
     }
 }
 
-fn eval(bags: &HashMap<String, HashSet<String>>, bag: &str, evaluated: &mut HashSet<String>, valid: &mut HashSet<String>)
+fn eval(bags: &HashMap<String, Vec<(i32, String)>>, bag: &str, result: &mut HashMap<String, i32>) -> i32
 {
-    if evaluated.contains(bag) {
-        return
+    if result.contains_key(bag) {
+        return result[bag]
     }
 
-    evaluated.insert(bag.to_string());
-
-    let mut victory = false;
-
-    for child in &bags[bag] {
-        eval(bags, &child, evaluated, valid);
-        if valid.contains(child) {
-            victory = true;
-        }
-    }
-
-    if victory {
-        valid.insert(bag.to_string());
-    }
-}
-
-fn eval2(bags: &HashMap<String, HashSet<String>>, bag: &str, evaluated: &mut HashSet<String>, valid: &mut HashSet<String>)
-{
-    if evaluated.contains(bag) {
-        return
-    }
-
-    evaluated.insert(bag.to_string());
-    valid.insert(bag.to_string());
+    let mut contents = 1;
 
     if bags.contains_key(bag) {
         for child in &bags[bag] {
-            eval2(bags, child, evaluated, valid);
+            contents += eval(bags, &child.1, result) * child.0;
         }
     }
+
+    result.insert(bag.to_string(), contents);
+
+    contents
 }
 
 fn main() {
     let lines = read_lines();
 
-    let mut bags: HashMap<String, HashSet<String>> = HashMap::new();
-    let mut bagContain: HashMap<String, HashSet<String>> = HashMap::new();
+    let mut bags: HashMap<String, Vec<(i32, String)>> = HashMap::new();
     let re = Regex::new(r"(?P<count>[0-9]+) (?P<bagtype>[^ ]+ [^ ]+) bag").unwrap();
 
     for line in lines {
@@ -92,37 +72,21 @@ fn main() {
         let bagname = (line.split(" bags contain ").collect::<Vec<&str>>())[0];
         dbg!(bagname);
 
-        let mut hs: HashSet<String> = HashSet::new();
+        let mut hs = Vec::new();
 
         if !line.contains("no other bags") {
             for capture in re.captures_iter(&line) {
                 let childname = capture.name("bagtype").unwrap().as_str().to_string();
-                dbg!(&childname);
-                hs.insert(childname.to_string());
-
-                if !bagContain.contains_key(&childname) {
-                    bagContain.insert(childname.to_string(), HashSet::new());
-                }
-                bagContain.get_mut(&childname).unwrap().insert(bagname.to_string());
+                let childcount = capture.name("count").unwrap().as_str().parse::<i32>().unwrap();
+                
+                hs.push((childcount, childname.to_string()));
             }
         }
 
         bags.insert(bagname.to_string(), hs);
     }
 
-    let mut evaluated = HashSet::new();
-    let mut valid = HashSet::new();
+    let mut evaluated = HashMap::new();
 
-    eval2(&bagContain, "shiny gold", &mut evaluated, &mut valid);
-
-    /*let mut evaluated = HashSet::new();
-    let mut valid = HashSet::new();
-    evaluated.insert("shiny gold".to_string());
-    valid.insert("shiny gold".to_string());
-    for bag in &bags {
-        eval(&bags, &bag.0, &mut evaluated, &mut valid);
-    }*/
-    dbg!(&valid);
-
-    dbg!(valid.len() - 1);
+    dbg!(eval(&bags, "shiny gold", &mut evaluated) - 1);
 }

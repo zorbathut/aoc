@@ -41,6 +41,35 @@ fn read_lines() -> Vec<String> {
     }
 }
 
+fn read_groups() -> Vec<Vec<String>> {
+    let mut rv: Vec<Vec<String>> = Vec::new();
+    let mut group = Vec::new();
+
+    loop {
+        let mut input = String::new();
+        match io::stdin().read_line(&mut input) {
+            Ok(0) => {
+                if group.len() > 0 {
+                    rv.push(group);
+                }
+                return rv;
+            },
+            Ok(_) => {
+                input = input.trim().to_string();
+                if input.len() == 0 {
+                    rv.push(group);
+                    group = Vec::new();
+                } else {
+                    group.push(input);
+                }
+            },
+            Err(_) => {
+                panic!();
+            }
+        }
+    }
+}
+
 fn eval(bags: &HashMap<String, Vec<(i32, String)>>, bag: &str, result: &mut HashMap<String, i32>) -> i32
 {
     if result.contains_key(bag) {

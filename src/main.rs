@@ -89,10 +89,11 @@ fn eval(bags: &HashMap<String, Vec<(i32, String)>>, bag: &str, result: &mut Hash
     contents
 }
 
+#[derive(Clone, Copy)]
 enum Instruction {
     Acc(i32),
     Jmp(i32),
-    Nop,
+    Nop(i32),
 }
 
 fn main() {
@@ -115,26 +116,43 @@ fn main() {
         } else if inst == "jmp" {
             instructions.push(Instruction::Jmp(arg));
         } else if inst == "nop" {
-            instructions.push(Instruction::Nop);
+            instructions.push(Instruction::Nop(arg));
         }
     }
 
-    let mut acc = 0;
-    let mut inst: i32 = 0;
+    for i in 0..instructions.len() {
+        let mut instruc = instructions.clone();
 
-    let mut seen = HashSet::new();
-
-    loop {
-        if seen.contains(&inst) {
-            dbg!(acc);
-            return;
+        match instruc[i as usize] {
+            Instruction::Acc(_) => { continue; }
+            Instruction::Jmp(arg) => { instruc[i as usize] = Instruction::Nop(arg); }
+            Instruction::Nop(arg) => { instruc[i as usize] = Instruction::Jmp(arg); }
         }
-        seen.insert(inst);
 
-        match instructions[inst as usize] {
-            Instruction::Acc(arg) => { acc += arg; inst += 1; }
-            Instruction::Jmp(arg) => { inst += arg; }
-            Instruction::Nop => { inst += 1; }
+        let mut acc = 0;
+        let mut inst: i32 = 0;
+    
+        let mut seen = HashSet::new();
+    
+        loop {
+            if seen.contains(&inst) {
+                //dbg!(acc);
+                break;
+            }
+            seen.insert(inst);
+
+            if inst == instruc.len() as i32 {
+                dbg!(acc);
+                break;
+            }
+    
+            match instruc[inst as usize] {
+                Instruction::Acc(arg) => { acc += arg; inst += 1; }
+                Instruction::Jmp(arg) => { inst += arg; }
+                Instruction::Nop(_) => { inst += 1; }
+            }
         }
+    
     }
+
 }

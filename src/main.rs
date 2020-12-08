@@ -70,25 +70,6 @@ fn read_groups() -> Vec<Vec<String>> {
     }
 }
 
-fn eval(bags: &HashMap<String, Vec<(i32, String)>>, bag: &str, result: &mut HashMap<String, i32>) -> i32
-{
-    if result.contains_key(bag) {
-        return result[bag]
-    }
-
-    let mut contents = 1;
-
-    if bags.contains_key(bag) {
-        for child in &bags[bag] {
-            contents += eval(bags, &child.1, result) * child.0;
-        }
-    }
-
-    result.insert(bag.to_string(), contents);
-
-    contents
-}
-
 #[derive(Clone, Copy)]
 enum Instruction {
     Acc(i32),

@@ -89,33 +89,52 @@ fn eval(bags: &HashMap<String, Vec<(i32, String)>>, bag: &str, result: &mut Hash
     contents
 }
 
+enum Instruction {
+    Acc(i32),
+    Jmp(i32),
+    Nop,
+}
+
 fn main() {
     let lines = read_lines();
 
-    let mut bags: HashMap<String, Vec<(i32, String)>> = HashMap::new();
-    let re = Regex::new(r"(?P<count>[0-9]+) (?P<bagtype>[^ ]+ [^ ]+) bag").unwrap();
+    let mut instructions: Vec<Instruction> = Vec::new();
+
+    let re = Regex::new(r"(?P<inst>[a-z]+) (?P<arg>[+-][\d]+)").unwrap();
 
     for line in lines {
         println!("{:#?}", line);
 
-        let bagname = (line.split(" bags contain ").collect::<Vec<&str>>())[0];
-        dbg!(bagname);
+        let captures = re.captures(&line).unwrap();
 
-        let mut hs = Vec::new();
-
-        if !line.contains("no other bags") {
-            for capture in re.captures_iter(&line) {
-                let childname = capture.name("bagtype").unwrap().as_str().to_string();
-                let childcount = capture.name("count").unwrap().as_str().parse::<i32>().unwrap();
-                
-                hs.push((childcount, childname.to_string()));
-            }
+        let inst = captures.name("inst").unwrap().as_str();
+        let arg = captures.name("arg").unwrap().as_str().parse::<i32>().unwrap();
+        
+        if inst == "acc" {
+            instructions.push(Instruction::Acc(arg));
+        } else if inst == "jmp" {
+            instructions.push(Instruction::Jmp(arg));
+        } else if inst == "nop" {
+            instructions.push(Instruction::Nop);
         }
-
-        bags.insert(bagname.to_string(), hs);
     }
 
-    let mut evaluated = HashMap::new();
+    let mut acc = 0;
+    let mut inst: i32 = 0;
 
-    dbg!(eval(&bags, "shiny gold", &mut evaluated) - 1);
+    let mut seen = HashSet::new();
+
+    loop {
+        if seen.contains(&inst) {
+            dbg!(acc);
+            return;
+        }
+        seen.insert(inst);
+
+        match instructions[inst as usize] {
+            Instruction::Acc(arg) => { acc += arg; inst += 1; }
+            Instruction::Jmp(arg) => { inst += arg; }
+            Instruction::Nop => { inst += 1; }
+        }
+    }
 }

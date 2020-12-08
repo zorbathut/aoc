@@ -96,7 +96,7 @@ enum Instruction {
     Nop(i32),
 }
 
-fn main() {
+fn read_program() -> Vec<Instruction> {
     let lines = read_lines();
 
     let mut instructions: Vec<Instruction> = Vec::new();
@@ -119,6 +119,12 @@ fn main() {
             instructions.push(Instruction::Nop(arg));
         }
     }
+
+    instructions
+}
+
+fn main() {
+    let instructions = read_program();
 
     for i in 0..instructions.len() {
         let mut instruc = instructions.clone();

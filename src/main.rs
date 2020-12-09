@@ -8,8 +8,8 @@ use std::iter::FromIterator;
 
 #[macro_use] extern crate scan_fmt;
 
-fn read_numbers() -> Vec<i32> {
-    let mut rv: Vec<i32> = Vec::new();
+fn read_numbers() -> Vec<i64> {
+    let mut rv: Vec<i64> = Vec::new();
 
     let mut input = String::new();
     loop {
@@ -17,7 +17,7 @@ fn read_numbers() -> Vec<i32> {
             Ok(0) => return rv,
             Ok(_) => {
                 input = input.trim().to_string();
-                rv.push(input.parse::<i32>().unwrap());
+                rv.push(input.parse::<i64>().unwrap());
             },
             Err(_) => return rv,
         }
@@ -105,41 +105,28 @@ fn read_program() -> Vec<Instruction> {
 }
 
 fn main() {
-    let instructions = read_program();
+    let vals = read_numbers();
 
-    for i in 0..instructions.len() {
-        let mut instruc = instructions.clone();
+    let mut numbs = Vec::new();
 
-        match instruc[i as usize] {
-            Instruction::Acc(_) => { continue; }
-            Instruction::Jmp(arg) => { instruc[i as usize] = Instruction::Nop(arg); }
-            Instruction::Nop(arg) => { instruc[i as usize] = Instruction::Jmp(arg); }
-        }
-
-        let mut acc = 0;
-        let mut inst: i32 = 0;
-    
-        let mut seen = HashSet::new();
-    
-        loop {
-            if seen.contains(&inst) {
-                //dbg!(acc);
-                break;
-            }
-            seen.insert(inst);
-
-            if inst == instruc.len() as i32 {
-                dbg!(acc);
-                break;
-            }
-    
-            match instruc[inst as usize] {
-                Instruction::Acc(arg) => { acc += arg; inst += 1; }
-                Instruction::Jmp(arg) => { inst += arg; }
-                Instruction::Nop(_) => { inst += 1; }
-            }
-        }
-    
+    for i in 0..25 {
+        numbs.push(vals[i]);
     }
 
+    for i in 25..vals.len() {
+        let mut found = false;
+        for lhs in &numbs {
+            if numbs.contains(&(vals[i] - lhs)) {
+                found = true;
+                break;
+            }
+        }
+
+        if !found {
+            dbg!(vals[i]);
+        }
+
+        numbs.remove(0);
+        numbs.push(vals[i]);
+    }
 }

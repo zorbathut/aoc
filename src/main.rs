@@ -112,7 +112,8 @@ fn main() {
     for i in 0..25 {
         numbs.push(vals[i]);
     }
-
+    
+    let mut target = 0;
     for i in 25..vals.len() {
         let mut found = false;
         for lhs in &numbs {
@@ -123,10 +124,30 @@ fn main() {
         }
 
         if !found {
-            dbg!(vals[i]);
+            target = vals[i];
+            break;
         }
 
         numbs.remove(0);
         numbs.push(vals[i]);
+    }
+
+    let mut accum = 0;
+    let mut start = 0;
+    let mut end = 0;
+    loop {
+        if accum == target {
+            let min = vals[start..end].iter().min().unwrap();
+            let max = vals[start..end].iter().max().unwrap();
+            dbg!(min + max);
+        }
+
+        if accum < target {
+            accum += vals[end];
+            end += 1;
+        } else if accum > target {
+            accum -= vals[start];
+            start += 1;
+        }
     }
 }

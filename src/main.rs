@@ -105,49 +105,23 @@ fn read_program() -> Vec<Instruction> {
 }
 
 fn main() {
-    let vals = read_numbers();
+    let mut vals = read_numbers();
+    vals.sort();
 
-    let mut numbs = Vec::new();
+    let mut jolts = 0;
+    let mut ones = 0;
+    let mut threes = 1;
 
-    for i in 0..25 {
-        numbs.push(vals[i]);
-    }
-    
-    let mut target = 0;
-    for i in 25..vals.len() {
-        let mut found = false;
-        for lhs in &numbs {
-            if numbs.contains(&(vals[i] - lhs)) {
-                found = true;
-                break;
-            }
+    for item in vals {
+        let diff = item - jolts;
+        match diff {
+            1 => ones += 1,
+            3 => threes += 1,
+            _ => (),
         }
 
-        if !found {
-            target = vals[i];
-            break;
-        }
-
-        numbs.remove(0);
-        numbs.push(vals[i]);
+        jolts = item;
     }
 
-    let mut accum = 0;
-    let mut start = 0;
-    let mut end = 0;
-    loop {
-        if accum == target {
-            let min = vals[start..end].iter().min().unwrap();
-            let max = vals[start..end].iter().max().unwrap();
-            dbg!(min + max);
-        }
-
-        if accum < target {
-            accum += vals[end];
-            end += 1;
-        } else if accum > target {
-            accum -= vals[start];
-            start += 1;
-        }
-    }
+    dbg!(ones * threes);
 }

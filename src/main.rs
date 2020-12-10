@@ -106,22 +106,29 @@ fn read_program() -> Vec<Instruction> {
 
 fn main() {
     let mut vals = read_numbers();
+    vals.push(0);
     vals.sort();
 
-    let mut jolts = 0;
-    let mut ones = 0;
-    let mut threes = 1;
+    dbg!(&vals);
 
-    for item in vals {
-        let diff = item - jolts;
-        match diff {
-            1 => ones += 1,
-            3 => threes += 1,
-            _ => (),
+    let mut ways = vec![0i64; vals.len()];
+    ways[0] = 1;
+
+    for index in 1..vals.len() {
+        for link in 1..4 {
+            dbg!(index, link);
+
+            if link > index {
+                break;
+            }
+
+            if vals[(index - link) as usize] < vals[index] - 3 {
+                break;
+            }
+
+            ways[index] += ways[(index - link) as usize];
         }
-
-        jolts = item;
     }
 
-    dbg!(ones * threes);
+    dbg!(ways);
 }

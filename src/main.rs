@@ -104,31 +104,72 @@ fn read_program() -> Vec<Instruction> {
     instructions
 }
 
+trait IterExt : Iterator {
+    fn count_if<F>(self, f: F) -> usize
+    where 
+        Self: Sized,
+        F: Fn(&Self::Item) -> bool,
+    {
+        self.filter(f).count()
+    }     
+}
+
+impl<I: Iterator> IterExt for I {}
+
 fn main() {
-    let mut vals = read_numbers();
-    vals.push(0);
-    vals.sort();
+    let mut vals = read_lines();
 
-    dbg!(&vals);
+    let mut current: Vec<Vec<char>> = vals.into_iter().map(|lin| lin.chars().collect()).collect();
+    
+    let mut dx: [i32; 8] = [0, 0, 1, -1, 1, 1, -1, -1];
+    let mut dy: [i32; 8] = [1, -1, 0, 0, 1, -1, 1, -1];
 
-    let mut ways = vec![0i64; vals.len()];
-    ways[0] = 1;
+    loop {
+        let mut next = Vec::new();
 
-    for index in 1..vals.len() {
-        for link in 1..4 {
-            dbg!(index, link);
+        for row in 0..current.len() {
+            let mut nextline = Vec::new();
+            for col in 0..current[row].len() {
+                let mut adjacencies = 0;
+                for d in 0..dx.len() {
+                    let tr = (row as i32) + dx[d];
+                    let tc = (col as i32) + dy[d];
+                    if tr < 0 || tr >= current.len() as i32 {
+                        continue;
+                    }
+                    if tc < 0 || tc >= current[tr as usize].len() as i32 {
+                        continue;
+                    }
 
-            if link > index {
-                break;
+                    if current[tr as usize][tc as usize] == '#' {
+                        adjacencies += 1;
+                    }
+                }
+
+                if current[row][col] == '#' && adjacencies >= 4 {
+                    nextline.push('L');
+                } else if current[row][col] == 'L' && adjacencies == 0 {
+                    nextline.push('#');
+                } else {
+                    nextline.push(current[row][col]);
+                }
             }
-
-            if vals[(index - link) as usize] < vals[index] - 3 {
-                break;
-            }
-
-            ways[index] += ways[(index - link) as usize];
+            next.push(nextline);
         }
+
+        if next == current {
+            let result: usize = current.iter().map(|line| line.iter().count_if(|&&c| c == '#')).sum();
+            dbg!(result);
+            break;
+        }
+
+        println!("---");
+        for lin in next.iter().map(|line| line.iter().collect::<String>()) {
+            println!("{}", lin);
+        }
+        
+        current = next;
     }
 
-    dbg!(ways);
+    
 }

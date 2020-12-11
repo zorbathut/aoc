@@ -132,21 +132,26 @@ fn main() {
             for col in 0..current[row].len() {
                 let mut adjacencies = 0;
                 for d in 0..dx.len() {
-                    let tr = (row as i32) + dx[d];
-                    let tc = (col as i32) + dy[d];
-                    if tr < 0 || tr >= current.len() as i32 {
-                        continue;
-                    }
-                    if tc < 0 || tc >= current[tr as usize].len() as i32 {
-                        continue;
-                    }
-
-                    if current[tr as usize][tc as usize] == '#' {
-                        adjacencies += 1;
+                    for i in 1..current.len() {
+                        let tr = (row as i32) + dx[d] * (i as i32);
+                        let tc = (col as i32) + dy[d] * (i as i32);
+                        if tr < 0 || tr >= current.len() as i32 {
+                            break;
+                        }
+                        if tc < 0 || tc >= current[tr as usize].len() as i32 {
+                            break;
+                        }
+    
+                        if current[tr as usize][tc as usize] == '#' {
+                            adjacencies += 1;
+                            break;
+                        } else if current[tr as usize][tc as usize] == 'L' {
+                            break;
+                        }
                     }
                 }
 
-                if current[row][col] == '#' && adjacencies >= 4 {
+                if current[row][col] == '#' && adjacencies >= 5 {
                     nextline.push('L');
                 } else if current[row][col] == 'L' && adjacencies == 0 {
                     nextline.push('#');

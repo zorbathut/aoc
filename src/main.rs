@@ -117,64 +117,31 @@ trait IterExt : Iterator {
 impl<I: Iterator> IterExt for I {}
 
 fn main() {
-    let mut vals = read_lines();
+    let mut dx: [i32; 4] = [1, 0, -1, 0];
+    let mut dy: [i32; 4] = [0, 1, 0, -1];
 
-    let mut current: Vec<Vec<char>> = vals.into_iter().map(|lin| lin.chars().collect()).collect();
-    
-    let mut dx: [i32; 8] = [0, 0, 1, -1, 1, 1, -1, -1];
-    let mut dy: [i32; 8] = [1, -1, 0, 0, 1, -1, 1, -1];
+    let mut direction: i32 = 0;
+    let mut cx = 0;
+    let mut cy = 0;
 
-    loop {
-        let mut next = Vec::new();
+    for line in read_lines() {
+        dbg!(&line);
 
-        for row in 0..current.len() {
-            let mut nextline = Vec::new();
-            for col in 0..current[row].len() {
-                let mut adjacencies = 0;
-                for d in 0..dx.len() {
-                    for i in 1..current.len() {
-                        let tr = (row as i32) + dx[d] * (i as i32);
-                        let tc = (col as i32) + dy[d] * (i as i32);
-                        if tr < 0 || tr >= current.len() as i32 {
-                            break;
-                        }
-                        if tc < 0 || tc >= current[tr as usize].len() as i32 {
-                            break;
-                        }
-    
-                        if current[tr as usize][tc as usize] == '#' {
-                            adjacencies += 1;
-                            break;
-                        } else if current[tr as usize][tc as usize] == 'L' {
-                            break;
-                        }
-                    }
-                }
+        let (cmd, amount) = scan_fmt!(&line, "{/./}{}", char, i32).unwrap();
 
-                if current[row][col] == '#' && adjacencies >= 5 {
-                    nextline.push('L');
-                } else if current[row][col] == 'L' && adjacencies == 0 {
-                    nextline.push('#');
-                } else {
-                    nextline.push(current[row][col]);
-                }
-            }
-            next.push(nextline);
+        match cmd {
+            'N' => cy -= amount,
+            'S' => cy += amount,
+            'E' => cx += amount,
+            'W' => cx -= amount,
+            'F' => { cx += dx[direction as usize] * amount; cy += dy[direction as usize] * amount; },
+            'L' => direction = (direction - amount / 90 + 4) % 4,
+            'R' => direction = (direction + amount / 90 + 4) % 4,
+            _ => panic!(),
         }
 
-        if next == current {
-            let result: usize = current.iter().map(|line| line.iter().count_if(|&&c| c == '#')).sum();
-            dbg!(result);
-            break;
-        }
-
-        println!("---");
-        for lin in next.iter().map(|line| line.iter().collect::<String>()) {
-            println!("{}", lin);
-        }
-        
-        current = next;
+        dbg!(cx, cy, direction);
     }
 
-    
+    dbg!(cx.abs() + cy.abs());
 }

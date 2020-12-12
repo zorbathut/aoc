@@ -1,4 +1,5 @@
 
+use std::mem;
 use std::io;
 use std::cmp;
 use regex::Regex;
@@ -123,20 +124,24 @@ fn main() {
     let mut direction: i32 = 0;
     let mut cx = 0;
     let mut cy = 0;
+    let mut wx = 10;
+    let mut wy = -1;
 
     for line in read_lines() {
         dbg!(&line);
 
         let (cmd, amount) = scan_fmt!(&line, "{/./}{}", char, i32).unwrap();
 
-        match cmd {
-            'N' => cy -= amount,
-            'S' => cy += amount,
-            'E' => cx += amount,
-            'W' => cx -= amount,
-            'F' => { cx += dx[direction as usize] * amount; cy += dy[direction as usize] * amount; },
-            'L' => direction = (direction - amount / 90 + 4) % 4,
-            'R' => direction = (direction + amount / 90 + 4) % 4,
+        match (cmd, amount) {
+            ('N', amt) => wy -= amt,
+            ('S', amt) => wy += amt,
+            ('E', amt) => wx += amt,
+            ('W', amt) => wx -= amt,
+            ('F', amt) => { cx += wx * amt; cy += wy * amt; },
+            ('L', 0) | ('R', 0) => (),
+            ('L', 90) | ('R', 270) => { mem::swap(&mut wx, &mut wy); wy *= -1; }
+            ('L', 270) | ('R', 90) => { mem::swap(&mut wx, &mut wy); wx *= -1; }
+            ('L', 180) | ('R', 180) => { wx *= -1; wy *= -1; }
             _ => panic!(),
         }
 

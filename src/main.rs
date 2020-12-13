@@ -6,6 +6,7 @@ use regex::Regex;
 use std::collections::HashSet;
 use std::collections::HashMap;
 use std::iter::FromIterator;
+use num::integer;
 
 #[macro_use] extern crate scan_fmt;
 
@@ -120,8 +121,30 @@ impl StdinExt for io::Stdin {
 
 fn main() {
     let time = io::stdin().read_line_direct().parse::<i32>().unwrap();
-    let buses: Vec<_> = io::stdin().read_line_direct().split(",").filter_map(|s| s.parse::<i32>().ok()).collect();
+    let buses: Vec<_> = io::stdin().read_line_direct().split(",").map(|s| s.parse::<i64>().ok()).collect();
 
-    let bus = buses.iter().min_by_key(|&&bus| bus - (time % bus)).unwrap();
-    dbg!(bus * (bus - (time % bus)));
+    let mut clcm: i64 = 1;
+    let mut cpos: i64 = 0;
+
+    for i in 0..buses.len() {
+        match (buses[i], clcm) {
+            (Some(bus), 1) => {
+                println!("{}: bus {}", i, bus);
+                clcm = bus;
+            },
+            (Some(bus), _) => {
+                println!("{}: bus {}", i, bus);
+                while cpos % bus != bus - (i as i64) % bus {
+                    cpos += clcm;
+                }
+        
+                clcm = integer::lcm(clcm, bus);
+
+                println!("{}: bus {}, position {}, lcm {}", i, bus, cpos, clcm);
+            },
+            (None, _) => (),
+        }
+    }
+
+    dbg!(cpos);
 }

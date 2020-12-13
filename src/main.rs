@@ -105,48 +105,23 @@ fn read_program() -> Vec<Instruction> {
     instructions
 }
 
-trait IterExt : Iterator {
-    fn count_if<F>(self, f: F) -> usize
-    where 
-        Self: Sized,
-        F: Fn(&Self::Item) -> bool,
-    {
-        self.filter(f).count()
-    }     
+trait StdinExt {
+    fn read_line_direct(&mut self) -> String;
 }
 
-impl<I: Iterator> IterExt for I {}
+impl StdinExt for io::Stdin {
+    fn read_line_direct(&mut self) -> String
+    {
+        let mut readstr: String = String::new();
+        self.read_line(&mut readstr).ok();
+        readstr.trim().to_string()
+    }
+}
 
 fn main() {
-    let mut dx: [i32; 4] = [1, 0, -1, 0];
-    let mut dy: [i32; 4] = [0, 1, 0, -1];
+    let time = io::stdin().read_line_direct().parse::<i32>().unwrap();
+    let buses: Vec<_> = io::stdin().read_line_direct().split(",").filter_map(|s| s.parse::<i32>().ok()).collect();
 
-    let mut direction: i32 = 0;
-    let mut cx = 0;
-    let mut cy = 0;
-    let mut wx = 10;
-    let mut wy = -1;
-
-    for line in read_lines() {
-        dbg!(&line);
-
-        let (cmd, amount) = scan_fmt!(&line, "{/./}{}", char, i32).unwrap();
-
-        match (cmd, amount) {
-            ('N', amt) => wy -= amt,
-            ('S', amt) => wy += amt,
-            ('E', amt) => wx += amt,
-            ('W', amt) => wx -= amt,
-            ('F', amt) => { cx += wx * amt; cy += wy * amt; },
-            ('L', 0) | ('R', 0) => (),
-            ('L', 90) | ('R', 270) => { mem::swap(&mut wx, &mut wy); wy *= -1; }
-            ('L', 270) | ('R', 90) => { mem::swap(&mut wx, &mut wy); wx *= -1; }
-            ('L', 180) | ('R', 180) => { wx *= -1; wy *= -1; }
-            _ => panic!(),
-        }
-
-        dbg!(cx, cy, direction);
-    }
-
-    dbg!(cx.abs() + cy.abs());
+    let bus = buses.iter().min_by_key(|&&bus| bus - (time % bus)).unwrap();
+    dbg!(bus * (bus - (time % bus)));
 }

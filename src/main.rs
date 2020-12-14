@@ -120,31 +120,35 @@ impl StdinExt for io::Stdin {
 }
 
 fn main() {
-    let time = io::stdin().read_line_direct().parse::<i32>().unwrap();
-    let buses: Vec<_> = io::stdin().read_line_direct().split(",").map(|s| s.parse::<i64>().ok()).collect();
+    let mut maskon: u64 = 0;
+    let mut maskoff: u64 = 0;
 
-    let mut clcm: i64 = 1;
-    let mut cpos: i64 = 0;
-
-    for i in 0..buses.len() {
-        match (buses[i], clcm) {
-            (Some(bus), 1) => {
-                println!("{}: bus {}", i, bus);
-                clcm = bus;
-            },
-            (Some(bus), _) => {
-                println!("{}: bus {}", i, bus);
-                while cpos % bus != bus - (i as i64) % bus {
-                    cpos += clcm;
+    let mut memory: HashMap<u64, u64> = HashMap::new();
+    
+    for line in read_lines() {
+        match line.chars().nth(1) {
+            Some('a') => {
+                let mask = line.split('=').nth(1).unwrap().trim();
+                maskon = 0;
+                maskoff = 0;
+                for bit in mask.chars() {
+                    maskon <<= 1;
+                    maskoff <<= 1;
+                    match bit {
+                        '0' => maskoff |= 1,
+                        '1' => maskon |= 1,
+                        _ => (),
+                    }
                 }
-        
-                clcm = integer::lcm(clcm, bus);
-
-                println!("{}: bus {}, position {}, lcm {}", i, bus, cpos, clcm);
             },
-            (None, _) => (),
+            Some('e') => {
+                let (addr, val) = scan_fmt!(&line, "mem[{}] = {}", u64, u64).unwrap();
+                let result = (val & !(maskon | maskoff)) | maskon;
+                memory.insert(addr, result);
+            },
+            _ => panic!(),
         }
     }
 
-    dbg!(cpos);
+    dbg!(memory.into_iter().map(|(key, value)| value).sum::<u64>());
 }

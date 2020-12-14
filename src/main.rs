@@ -119,9 +119,26 @@ impl StdinExt for io::Stdin {
     }
 }
 
+fn blitzmem(addr: u64, val: u64, mutable: u64, index: usize, memory: &mut HashMap<u64, u64>)
+{
+    if index == 36 {
+        memory.insert(addr, val);
+        return;
+    }
+
+    let ofs = 1u64 << index;
+    if mutable & ofs != 0 {
+        blitzmem(addr & !ofs, val, mutable, index + 1, memory);
+        blitzmem(addr | ofs, val, mutable, index + 1, memory);
+    } else {
+        blitzmem(addr, val, mutable, index + 1, memory);
+    }
+}
+
 fn main() {
     let mut maskon: u64 = 0;
     let mut maskoff: u64 = 0;
+    let mut mutable: u64 = 0;
 
     let mut memory: HashMap<u64, u64> = HashMap::new();
     
@@ -131,20 +148,22 @@ fn main() {
                 let mask = line.split('=').nth(1).unwrap().trim();
                 maskon = 0;
                 maskoff = 0;
+                mutable = 0;
                 for bit in mask.chars() {
                     maskon <<= 1;
                     maskoff <<= 1;
+                    mutable <<= 1;
                     match bit {
                         '0' => maskoff |= 1,
                         '1' => maskon |= 1,
+                        'X' => mutable |= 1,
                         _ => (),
                     }
                 }
             },
             Some('e') => {
                 let (addr, val) = scan_fmt!(&line, "mem[{}] = {}", u64, u64).unwrap();
-                let result = (val & !(maskon | maskoff)) | maskon;
-                memory.insert(addr, result);
+                blitzmem(addr | maskon, val, mutable, 0, &mut memory);
             },
             _ => panic!(),
         }

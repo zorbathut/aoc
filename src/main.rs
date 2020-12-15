@@ -136,38 +136,33 @@ fn blitzmem(addr: u64, val: u64, mutable: u64, index: usize, memory: &mut HashMa
 }
 
 fn main() {
-    let mut maskon: u64 = 0;
-    let mut maskoff: u64 = 0;
-    let mut mutable: u64 = 0;
+    let start: Vec<_> = io::stdin().read_line_direct().split(",").map(|n| n.parse::<i32>().unwrap()).collect();
+    let mut lookup = HashMap::new();
 
-    let mut memory: HashMap<u64, u64> = HashMap::new();
-    
-    for line in read_lines() {
-        match line.chars().nth(1) {
-            Some('a') => {
-                let mask = line.split('=').nth(1).unwrap().trim();
-                maskon = 0;
-                maskoff = 0;
-                mutable = 0;
-                for bit in mask.chars() {
-                    maskon <<= 1;
-                    maskoff <<= 1;
-                    mutable <<= 1;
-                    match bit {
-                        '0' => maskoff |= 1,
-                        '1' => maskon |= 1,
-                        'X' => mutable |= 1,
-                        _ => (),
-                    }
-                }
-            },
-            Some('e') => {
-                let (addr, val) = scan_fmt!(&line, "mem[{}] = {}", u64, u64).unwrap();
-                blitzmem(addr | maskon, val, mutable, 0, &mut memory);
-            },
-            _ => panic!(),
+    let mut index = 0;
+    let mut current = 0;
+
+    for element in start {
+        println!("{}: {}", index, element);
+        match lookup.insert(element, index) {
+            None => current = 0,
+            Some(last) => current = index - last,
         }
+            
+        index += 1;
     }
 
-    dbg!(memory.into_iter().map(|(key, value)| value).sum::<u64>());
+    while index < 30000000 - 1 {
+        if index % 100000 == 0 {
+            println!("{}: {}", index, current);
+        }
+        match lookup.insert(current, index) {
+            None => current = 0,
+            Some(last) => current = index - last,
+        }
+            
+        index += 1;
+    }
+
+    dbg!(current);
 }

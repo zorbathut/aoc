@@ -135,8 +135,70 @@ fn blitzmem(addr: u64, val: u64, mutable: u64, index: usize, memory: &mut HashMa
     }
 }
 
+fn blitz(validtickets: &Vec<Vec<i32>>, groups: &Vec<Vec<(i32, i32)>>, yourticket: &Vec<i32>, mapping: &mut Vec<usize>) {
+    if mapping.len() == 20 {
+        let mut accum: i64 = 1;
+        for i in 0..6 {
+            accum *= yourticket[mapping[i]] as i64;
+        }
+        dbg!(accum);
+        return;
+    }
+
+    if mapping.len() > 12 {
+        dbg!(mapping.len());
+    }
+
+    for i in 0..groups.len() {
+        if mapping.contains(&i) {
+            continue;
+        }
+
+        let mut valid = true;
+        for ticket in validtickets {
+            let mut matched = false;
+            for clause in &groups[mapping.len()] {
+                if clause.0 <= ticket[i] && ticket[i] <= clause.1 {
+                    matched = true;
+                }
+            }
+
+            if !matched {
+                valid = false;
+                break;
+            }
+        }
+
+        if !valid {
+            continue;
+        }
+
+        mapping.push(i);
+        
+        blitz(validtickets, groups, yourticket, mapping);
+
+        mapping.pop();
+    }
+}
+
+fn bpm(matches: &Vec<Vec<bool>>, group: usize, seen: &mut Vec<bool>, assignments: &mut Vec<Option<usize>>) -> bool
+{
+    for entry in 0..matches.len() {
+        if !seen[entry] && matches[group][entry] {
+            seen[entry] = true;
+
+            if assignments[entry].is_none() || bpm(matches, assignments[entry].unwrap(), seen, assignments) {
+                assignments[entry] = Some(group);
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 fn main() {
-    let mut ranges = Vec::new();
+    let mut groups = Vec::new();
 
     loop {
         let line = io::stdin().read_line_direct();
@@ -146,32 +208,81 @@ fn main() {
         
         let ends: Vec<_> = line.split(": ").collect();
         let clauses: Vec<_> = ends[1].split(" or ").collect();
-        for elem in clauses {
-            ranges.push(scan_fmt!(elem, "{}-{}", i32, i32).unwrap());
-        }
+
+        groups.push(clauses.iter().map(|c| scan_fmt!(c, "{}-{}", i32, i32).unwrap()).collect::<Vec<_>>());
     }
 
-    dbg!(&ranges);
+    dbg!(&groups);
+
+    io::stdin().read_line_direct();
+    
+    let yourticket: Vec<_> = io::stdin().read_line_direct().split(",").map(|x| x.parse::<i32>().unwrap()).collect();
 
     io::stdin().read_line_direct();
     io::stdin().read_line_direct();
-    io::stdin().read_line_direct();
-    io::stdin().read_line_direct();
 
-    let mut accum = 0;
+    let mut validtickets: Vec<Vec<i32>> = Vec::new();
+    
     for ticket in read_lines() {
+        let mut valid = true;
         for value in ticket.split(",").map(|x| x.parse::<i32>().unwrap()) {
             let mut found = false;
-            for range in &ranges {
-                if range.0 <= value && value <= range.1 {
-                    found = true;
+            for group in &groups {
+                for range in group {
+                    if range.0 <= value && value <= range.1 {
+                        found = true;
+                    }
                 }
             }
 
             if !found {
-                accum += value;
+                valid = false;
             }
         }
+
+        if valid {
+            validtickets.push(ticket.split(",").map(|x| x.parse::<i32>().unwrap()).collect());
+        }
+    }
+
+    let mut matches: Vec<Vec<bool>> = Vec::new();
+    for group in 0..groups.len() {
+        let mut matchset = Vec::new();
+        for entry in 0..groups.len() {
+            let mut valid = true;
+            for ticket in &validtickets {
+                let mut found = false;
+                for clause in &groups[entry] {
+                    if clause.0 <= ticket[group] && ticket[group] <= clause.1 {
+                        found = true;
+                    }
+                }
+
+                if !found {
+                    valid = false;
+                    break;
+                }
+            }
+
+            matchset.push(valid);            
+        }
+
+        matches.push(matchset);
+    }
+
+    dbg!(&matches);
+
+    let mut assignments: Vec<Option<usize>> = vec![None; groups.len()];
+    for group in 0..groups.len() {
+        let mut seen = vec![false; groups.len()];
+        bpm(&matches, group, &mut seen, &mut assignments);
+    }
+
+    dbg!(&assignments);
+
+    let mut accum: i64 = 1;
+    for i in 0..6 {
+        accum *= yourticket[assignments[i].unwrap()] as i64;
     }
 
     dbg!(accum);

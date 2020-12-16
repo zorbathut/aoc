@@ -136,33 +136,43 @@ fn blitzmem(addr: u64, val: u64, mutable: u64, index: usize, memory: &mut HashMa
 }
 
 fn main() {
-    let start: Vec<_> = io::stdin().read_line_direct().split(",").map(|n| n.parse::<i32>().unwrap()).collect();
-    let mut lookup = HashMap::new();
+    let mut ranges = Vec::new();
 
-    let mut index = 0;
-    let mut current = 0;
-
-    for element in start {
-        println!("{}: {}", index, element);
-        match lookup.insert(element, index) {
-            None => current = 0,
-            Some(last) => current = index - last,
+    loop {
+        let line = io::stdin().read_line_direct();
+        if line == "" {
+            break;
         }
-            
-        index += 1;
+        
+        let ends: Vec<_> = line.split(": ").collect();
+        let clauses: Vec<_> = ends[1].split(" or ").collect();
+        for elem in clauses {
+            ranges.push(scan_fmt!(elem, "{}-{}", i32, i32).unwrap());
+        }
     }
 
-    while index < 30000000 - 1 {
-        if index % 100000 == 0 {
-            println!("{}: {}", index, current);
+    dbg!(&ranges);
+
+    io::stdin().read_line_direct();
+    io::stdin().read_line_direct();
+    io::stdin().read_line_direct();
+    io::stdin().read_line_direct();
+
+    let mut accum = 0;
+    for ticket in read_lines() {
+        for value in ticket.split(",").map(|x| x.parse::<i32>().unwrap()) {
+            let mut found = false;
+            for range in &ranges {
+                if range.0 <= value && value <= range.1 {
+                    found = true;
+                }
+            }
+
+            if !found {
+                accum += value;
+            }
         }
-        match lookup.insert(current, index) {
-            None => current = 0,
-            Some(last) => current = index - last,
-        }
-            
-        index += 1;
     }
 
-    dbg!(current);
+    dbg!(accum);
 }

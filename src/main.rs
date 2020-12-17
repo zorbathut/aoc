@@ -198,92 +198,56 @@ fn bpm(matches: &Vec<Vec<bool>>, group: usize, seen: &mut Vec<bool>, assignments
 }
 
 fn main() {
-    let mut groups = Vec::new();
+    let mut state = HashSet::new();
 
-    loop {
-        let line = io::stdin().read_line_direct();
-        if line == "" {
-            break;
-        }
-        
-        let ends: Vec<_> = line.split(": ").collect();
-        let clauses: Vec<_> = ends[1].split(" or ").collect();
-
-        groups.push(clauses.iter().map(|c| scan_fmt!(c, "{}-{}", i32, i32).unwrap()).collect::<Vec<_>>());
-    }
-
-    dbg!(&groups);
-
-    io::stdin().read_line_direct();
-    
-    let yourticket: Vec<_> = io::stdin().read_line_direct().split(",").map(|x| x.parse::<i32>().unwrap()).collect();
-
-    io::stdin().read_line_direct();
-    io::stdin().read_line_direct();
-
-    let mut validtickets: Vec<Vec<i32>> = Vec::new();
-    
-    for ticket in read_lines() {
-        let mut valid = true;
-        for value in ticket.split(",").map(|x| x.parse::<i32>().unwrap()) {
-            let mut found = false;
-            for group in &groups {
-                for range in group {
-                    if range.0 <= value && value <= range.1 {
-                        found = true;
-                    }
-                }
+    for row in read_lines().iter().enumerate() {
+        for col in row.1.chars().enumerate() {
+            if col.1 == '#' {
+                state.insert((row.0 as i32, col.0 as i32, 0, 0));
             }
-
-            if !found {
-                valid = false;
-            }
-        }
-
-        if valid {
-            validtickets.push(ticket.split(",").map(|x| x.parse::<i32>().unwrap()).collect());
-        }
+        } 
     }
 
-    let mut matches: Vec<Vec<bool>> = Vec::new();
-    for group in 0..groups.len() {
-        let mut matchset = Vec::new();
-        for entry in 0..groups.len() {
-            let mut valid = true;
-            for ticket in &validtickets {
-                let mut found = false;
-                for clause in &groups[entry] {
-                    if clause.0 <= ticket[group] && ticket[group] <= clause.1 {
-                        found = true;
-                    }
-                }
+    let dw = vec![-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
+    let dx = vec![-1, -1, -1, -1, -1, -1, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1];
+    let dy = vec![-1, -1, -1, 0, 0, 0, 1, 1, 1, -1, -1, -1, 0, 0, 0, 1, 1, 1, -1, -1, -1, 0, 0, 0, 1, 1, 1, -1, -1, -1, 0, 0, 0, 1, 1, 1, -1, -1, -1, 0, 0, 1, 1, 1, -1, -1, -1, 0, 0, 0, 1, 1, 1, -1, -1, -1, 0, 0, 0, 1, 1, 1, -1, -1, -1, 0, 0, 0, 1, 1, 1, -1, -1, -1, 0, 0, 0, 1, 1, 1];
+    let dz = vec![-1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 1, 0, -1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 1, -1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 1, 0, -1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 1];
 
-                if !found {
-                    valid = false;
-                    break;
-                }
-            }
-
-            matchset.push(valid);            
-        }
-
-        matches.push(matchset);
-    }
-
-    dbg!(&matches);
-
-    let mut assignments: Vec<Option<usize>> = vec![None; groups.len()];
-    for group in 0..groups.len() {
-        let mut seen = vec![false; groups.len()];
-        bpm(&matches, group, &mut seen, &mut assignments);
-    }
-
-    dbg!(&assignments);
-
-    let mut accum: i64 = 1;
     for i in 0..6 {
-        accum *= yourticket[assignments[i].unwrap()] as i64;
+        let nx = state.iter().map(|s| s.0).min().unwrap() - 1;
+        let xx = state.iter().map(|s| s.0).max().unwrap() + 1;
+        let ny = state.iter().map(|s| s.1).min().unwrap() - 1;
+        let xy = state.iter().map(|s| s.1).max().unwrap() + 1;
+        let nz = state.iter().map(|s| s.2).min().unwrap() - 1;
+        let xz = state.iter().map(|s| s.2).max().unwrap() + 1;
+        let nw = state.iter().map(|s| s.3).min().unwrap() - 1;
+        let xw = state.iter().map(|s| s.3).max().unwrap() + 1;
+
+        let mut newstate = HashSet::new();
+
+        for x in nx..=xx {
+            for y in ny..=xy {
+                for z in nz..=xz {
+                    for w in nw..=xw {
+                        let mut ct = 0;
+                        for d in 0..80 {
+                            if state.contains(&(x + dx[d], y + dy[d], z + dz[d], w + dw[d])) {
+                                ct += 1;
+                            }
+                        }
+                        
+                        if state.contains(&(x, y, z, w)) && (ct == 2 || ct == 3) {
+                            newstate.insert((x, y, z, w));
+                        } else if !state.contains(&(x, y, z, w)) && ct == 3 {
+                            newstate.insert((x, y, z, w));
+                        }
+                    }
+                }
+            }
+        }
+
+        state = newstate;
     }
 
-    dbg!(accum);
+    dbg!(state.len());
 }

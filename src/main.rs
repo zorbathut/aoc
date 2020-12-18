@@ -8,6 +8,7 @@ use std::collections::HashMap;
 use std::iter::FromIterator;
 use num::integer;
 
+#[macro_use] extern crate lazy_static;
 #[macro_use] extern crate scan_fmt;
 
 fn read_numbers() -> Vec<i64> {
@@ -197,17 +198,19 @@ fn bpm(matches: &Vec<Vec<bool>>, group: usize, seen: &mut Vec<bool>, assignments
     return false;
 }
 
-fn eval(mut input: String) -> String {
-    let parensre = Regex::new(r"\(([^()]+)\)").unwrap();
-    let plusre = Regex::new(r"([0-9]+) ([+]) ([0-9]+)").unwrap();
-    let timesre = Regex::new(r"([0-9]+) ([*]) ([0-9]+)").unwrap();
+lazy_static! {
+    static ref REGEX_PARENS: regex::Regex = Regex::new(r"\(([^()]+)\)").unwrap();
+    static ref REGEX_PLUS: regex::Regex = Regex::new(r"([0-9]+) ([+]) ([0-9]+)").unwrap();
+    static ref REGEX_TIMES: regex::Regex = Regex::new(r"([0-9]+) ([*]) ([0-9]+)").unwrap();
+}
 
+fn eval(mut input: String) -> String {
     for _ in 0..10 {
-        input = parensre.replace_all(&input, |captures: &regex::Captures| eval(captures[1].to_string())).to_string();
+        input = REGEX_PARENS.replace_all(&input, |captures: &regex::Captures| eval(captures[1].to_string())).to_string();
     }
 
     for _ in 0..10 {
-        input = plusre.replace(&input, |captures: &regex::Captures| {
+        input = REGEX_PLUS.replace(&input, |captures: &regex::Captures| {
             match &captures[2] {
                 "+" => (captures[1].parse::<i64>().unwrap() + captures[3].parse::<i64>().unwrap()).to_string(),
                 "*" => (captures[1].parse::<i64>().unwrap() * captures[3].parse::<i64>().unwrap()).to_string(),
@@ -217,7 +220,7 @@ fn eval(mut input: String) -> String {
     }
 
     for _ in 0..10 {
-        input = timesre.replace(&input, |captures: &regex::Captures| {
+        input = REGEX_TIMES.replace(&input, |captures: &regex::Captures| {
             match &captures[2] {
                 "+" => (captures[1].parse::<i64>().unwrap() + captures[3].parse::<i64>().unwrap()).to_string(),
                 "*" => (captures[1].parse::<i64>().unwrap() * captures[3].parse::<i64>().unwrap()).to_string(),

@@ -10,4 +10,4 @@ edition = "2018"
 regex = "*"
 scan_fmt = "*"
 num = "*"
-
+lazy_static = "*"

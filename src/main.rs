@@ -199,16 +199,25 @@ fn bpm(matches: &Vec<Vec<bool>>, group: usize, seen: &mut Vec<bool>, assignments
 
 fn eval(mut input: String) -> String {
     let parensre = Regex::new(r"\(([^()]+)\)").unwrap();
-    let noparensre = Regex::new(r"([0-9]+) ([+*]) ([0-9]+)").unwrap();
+    let plusre = Regex::new(r"([0-9]+) ([+]) ([0-9]+)").unwrap();
+    let timesre = Regex::new(r"([0-9]+) ([*]) ([0-9]+)").unwrap();
 
     for _ in 0..10 {
-        dbg!(&input);
         input = parensre.replace_all(&input, |captures: &regex::Captures| eval(captures[1].to_string())).to_string();
     }
 
     for _ in 0..10 {
-        dbg!(&input);
-        input = noparensre.replace(&input, |captures: &regex::Captures| {
+        input = plusre.replace(&input, |captures: &regex::Captures| {
+            match &captures[2] {
+                "+" => (captures[1].parse::<i64>().unwrap() + captures[3].parse::<i64>().unwrap()).to_string(),
+                "*" => (captures[1].parse::<i64>().unwrap() * captures[3].parse::<i64>().unwrap()).to_string(),
+                _ => panic!(),
+            }
+        }).to_string();
+    }
+
+    for _ in 0..10 {
+        input = timesre.replace(&input, |captures: &regex::Captures| {
             match &captures[2] {
                 "+" => (captures[1].parse::<i64>().unwrap() + captures[3].parse::<i64>().unwrap()).to_string(),
                 "*" => (captures[1].parse::<i64>().unwrap() * captures[3].parse::<i64>().unwrap()).to_string(),

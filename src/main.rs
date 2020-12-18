@@ -197,57 +197,36 @@ fn bpm(matches: &Vec<Vec<bool>>, group: usize, seen: &mut Vec<bool>, assignments
     return false;
 }
 
+fn eval(mut input: String) -> String {
+    let parensre = Regex::new(r"\(([^()]+)\)").unwrap();
+    let noparensre = Regex::new(r"([0-9]+) ([+*]) ([0-9]+)").unwrap();
+
+    for _ in 0..10 {
+        dbg!(&input);
+        input = parensre.replace_all(&input, |captures: &regex::Captures| eval(captures[1].to_string())).to_string();
+    }
+
+    for _ in 0..10 {
+        dbg!(&input);
+        input = noparensre.replace(&input, |captures: &regex::Captures| {
+            match &captures[2] {
+                "+" => (captures[1].parse::<i64>().unwrap() + captures[3].parse::<i64>().unwrap()).to_string(),
+                "*" => (captures[1].parse::<i64>().unwrap() * captures[3].parse::<i64>().unwrap()).to_string(),
+                _ => panic!(),
+            }
+        }).to_string();
+    }
+
+    input
+}
+
 fn main() {
-    let mut state = HashSet::new();
+    let mut accum = 0;
 
-    for row in read_lines().iter().enumerate() {
-        for col in row.1.chars().enumerate() {
-            if col.1 == '#' {
-                state.insert((row.0 as i32, col.0 as i32, 0, 0));
-            }
-        } 
+    for row in read_lines().iter() {
+        dbg!(row);
+        accum += eval(row.to_string()).parse::<i64>().unwrap();
     }
 
-    let dw = vec![-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
-    let dx = vec![-1, -1, -1, -1, -1, -1, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1];
-    let dy = vec![-1, -1, -1, 0, 0, 0, 1, 1, 1, -1, -1, -1, 0, 0, 0, 1, 1, 1, -1, -1, -1, 0, 0, 0, 1, 1, 1, -1, -1, -1, 0, 0, 0, 1, 1, 1, -1, -1, -1, 0, 0, 1, 1, 1, -1, -1, -1, 0, 0, 0, 1, 1, 1, -1, -1, -1, 0, 0, 0, 1, 1, 1, -1, -1, -1, 0, 0, 0, 1, 1, 1, -1, -1, -1, 0, 0, 0, 1, 1, 1];
-    let dz = vec![-1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 1, 0, -1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 1, -1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 1, 0, -1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 1];
-
-    for i in 0..6 {
-        let nx = state.iter().map(|s| s.0).min().unwrap() - 1;
-        let xx = state.iter().map(|s| s.0).max().unwrap() + 1;
-        let ny = state.iter().map(|s| s.1).min().unwrap() - 1;
-        let xy = state.iter().map(|s| s.1).max().unwrap() + 1;
-        let nz = state.iter().map(|s| s.2).min().unwrap() - 1;
-        let xz = state.iter().map(|s| s.2).max().unwrap() + 1;
-        let nw = state.iter().map(|s| s.3).min().unwrap() - 1;
-        let xw = state.iter().map(|s| s.3).max().unwrap() + 1;
-
-        let mut newstate = HashSet::new();
-
-        for x in nx..=xx {
-            for y in ny..=xy {
-                for z in nz..=xz {
-                    for w in nw..=xw {
-                        let mut ct = 0;
-                        for d in 0..80 {
-                            if state.contains(&(x + dx[d], y + dy[d], z + dz[d], w + dw[d])) {
-                                ct += 1;
-                            }
-                        }
-                        
-                        if state.contains(&(x, y, z, w)) && (ct == 2 || ct == 3) {
-                            newstate.insert((x, y, z, w));
-                        } else if !state.contains(&(x, y, z, w)) && ct == 3 {
-                            newstate.insert((x, y, z, w));
-                        }
-                    }
-                }
-            }
-        }
-
-        state = newstate;
-    }
-
-    dbg!(state.len());
+    dbg!(accum);
 }

@@ -232,13 +232,118 @@ fn eval(mut input: String) -> String {
     input
 }
 
-fn main() {
-    let mut accum = 0;
+#[derive(Debug)]
+pub enum Rule {
+    Literal(char),
+    Split(Vec<i32>),
+    Sequence(Vec<i32>),
+}
 
-    for row in read_lines().iter() {
-        dbg!(row);
-        accum += eval(row.to_string()).parse::<i64>().unwrap();
+fn process_return(mut sin: Vec<(i32, usize)>, stateNew: &mut HashSet<Vec<(i32, usize)>>, rules: &HashMap<i32, Rule>)
+{
+    sin.pop();
+
+    while sin.len() > 0 {
+        match &rules[&sin.last().unwrap().0] {
+            Rule::Sequence(seq) => {
+                if seq.len() > sin.last().unwrap().1 {
+                    stateNew.insert(sin);
+                    return;
+                }
+            }
+            _ => panic!(),
+        }
+
+        sin.pop();
     }
 
-    dbg!(accum);
+    stateNew.insert(sin);
+}
+
+fn process_call(mut sin: Vec<(i32, usize)>, kar: char, stateNew: &mut HashSet<Vec<(i32, usize)>>, rules: &HashMap<i32, Rule>)
+{
+    //dbg!(&sin, kar);
+
+    if sin.len() == 0 {
+        // fell off the end.
+        return;
+    }
+
+    // 
+    let last = sin.last().unwrap();
+    let rule = &rules[&last.0];
+    //dbg!("MATCHHERE", rule, kar);
+    match rule {
+        Rule::Literal(k2) => {
+            if kar == *k2 {
+                // a good match, continue
+                process_return(sin, stateNew, rules);
+            }
+        },
+        Rule::Split(split) => {
+            for sp in split {
+                let mut sincopy = sin.clone();
+                sincopy.pop();
+                sincopy.push((*sp, 0));
+                process_call(sincopy, kar, stateNew, rules);
+            }
+        },
+        Rule::Sequence(links) => {
+            let mut sincopy = sin.clone();
+            let link = links[sincopy.last_mut().unwrap().1];
+            sincopy.last_mut().unwrap().1 += 1;
+            sincopy.push((link, 0));
+            process_call(sincopy, kar, stateNew, rules);
+        }
+    }
+}
+
+fn main() {
+    let chunks = read_groups();
+    let mut rules = HashMap::new();
+
+    for inst in &chunks[0] {
+        let init: Vec<&str> = inst.split(": ").collect();
+        let key = init[0].parse::<i32>().unwrap();
+        let tok = init[1];
+
+        if tok.chars().nth(0).unwrap() == '"' {
+            rules.insert(key, Rule::Literal(tok.chars().nth(1).unwrap()));
+        } else {
+            let mut res = Vec::new();
+            for (id, piece) in tok.split(" | ").enumerate() {
+                let ki = key + 1000 * (id as i32 + 1);
+                rules.insert(ki, Rule::Sequence(piece.split(" ").map(|t| t.parse::<i32>().unwrap()).collect()));
+                res.push(ki);
+            }
+            rules.insert(key, Rule::Split(res));
+        }
+    }
+
+    dbg!(&rules);
+
+    let mut count = 0;
+    for line in &chunks[1] {
+        let mut state: HashSet<Vec<(i32, usize)>> = HashSet::new();
+        state.insert(vec![(0, 0)]);
+
+        for kar in line.chars() {
+            // process state here!
+
+            let mut stateNew = HashSet::new();
+
+            for sin in state {
+                process_call(sin, kar, &mut stateNew, &rules);
+            }
+
+            state = stateNew;
+        }
+
+        if state.contains(&Vec::new()) {
+            count += 1;
+            dbg!(&line);
+        }
+    }
+
+    dbg!(count);
 }

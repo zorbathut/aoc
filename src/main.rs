@@ -311,12 +311,15 @@ fn invert(mut inp: i32) -> i32 {
     result
 }
 
+const SIZE: usize = 12;
+
 #[derive(Clone, Copy)]
 struct Layout {
     u: i32,
     r: i32,
     d: i32,
     l: i32,
+    rot: i32,
 }
 
 impl fmt::Debug for Layout {
@@ -330,18 +333,17 @@ impl fmt::Debug for Layout {
     }
 }
 
-
 impl Layout {
     fn hflip(self) -> Layout {
-        Layout{u: invert(self.u), r: self.l, d: invert(self.d), l: self.r}
+        Layout{u: invert(self.u), r: self.l, d: invert(self.d), l: self.r, rot: 0}
     }
 
     fn vflip(self) -> Layout {
-        Layout{u: self.d, r: invert(self.r), d: self.u, l: invert(self.l)}
+        Layout{u: self.d, r: invert(self.r), d: self.u, l: invert(self.l), rot: 0}
     }
 
     fn dflip(self) -> Layout {
-        Layout{u: self.l, r: self.d, d: self.r, l: self.u}
+        Layout{u: self.l, r: self.d, d: self.r, l: self.u, rot: 0}
     }
 
     fn rot(self, rot: i32) -> Layout {
@@ -357,29 +359,106 @@ impl Layout {
             rv = rv.dflip();
         }
 
+        rv.rot = rot;
+
         rv
     }
 
     fn nil() -> Layout {
-        Layout{u:0, r:0, d:0, l:0}
+        Layout{u:0, r:0, d:0, l:0, rot:0}
     }
 }
 
-fn doitall(x: usize, y: usize, map: &mut [[(i32, Layout); 12]; 12], tiles: &HashMap<i32, Layout>, lookup: &HashMap<i32, Vec<i32>>, used: &mut HashSet<i32>)
+fn finnit(map: &mut [[(i32, Layout); SIZE]; SIZE], tiles: &HashMap<i32, Layout>, payloads: &HashMap<i32, [[bool; 8]; 8]>, used: &mut HashSet<i32>)
 {
-    if x == 12 {
-        doitall(0, y + 1, map, tiles, lookup, used);
+    // accumulate this dumb thing
+
+    let mut image = [[false; 8*SIZE]; 8*SIZE];
+    let mut imagecount = 0;
+    for my in 0..SIZE {
+        for mx in 0..SIZE {
+            let rot = map[mx][my].1.rot;
+            let payload = &payloads[&map[mx][my].0];
+
+            for ty in 0..8 {
+                for tx in 0..8 {
+                    let mut rx = tx;
+                    let mut ry = ty;
+
+                    if rot & (1 << 0) != 0 {
+                        rx = 7 - rx;
+                    }
+                    if rot & (1 << 1) != 0 {
+                        ry = 7 - ry;
+                    }
+                    if rot & (1 << 2) != 0 {
+                        mem::swap(&mut rx, &mut ry);
+                    }
+
+                    image[mx * 8 + rx][my * 8 + ry] = payload[ty][tx];
+                    if payload[ty][tx] {
+                        imagecount += 1;
+                    }
+                }
+            }
+        }
+    }
+
+    println!("{}", image.iter().map(|lin| lin.iter().map(|&kar| if kar { '#' } else { '.' }).collect::<String>() + "\n").collect::<String>());
+
+    let serpent = [
+        (0, 1),
+        (1, 2),
+        (4, 2),
+        (5, 1),
+        (6, 1),
+        (7, 2),
+        (10, 2),
+        (11, 1),
+        (12, 1),
+        (13, 2),
+        (16, 2),
+        (17, 1),
+        (18, 1),
+        (18, 0),
+        (19, 1),
+    ];
+
+    let mut smon = 0;
+    for tx in 0..image.len() {
+        for ty in 0..image[0].len() {
+            let mut valid = true;
+            for s in serpent.iter() {
+                let px = tx + s.0;
+                let py = ty + s.1;
+                if px >= image.len() || py >= image[0].len() || !image[py][px] {
+                    valid = false;
+                    break;
+                }
+            }
+
+            if valid {
+                println!("found smon {} {}", tx, ty);
+                smon += serpent.len();
+            }
+        }
+    }
+
+    dbg!(imagecount - smon);
+}
+
+fn doitall(x: usize, y: usize, map: &mut [[(i32, Layout); SIZE]; SIZE], tiles: &HashMap<i32, Layout>, payloads: &HashMap<i32, [[bool; 8]; 8]>, used: &mut HashSet<i32>)
+{
+    if x == SIZE {
+        doitall(0, y + 1, map, tiles, payloads, used);
         return;
     }
 
-    if y == 12 {
+    if y == SIZE {
         dbg!("DONE");
-        let mut accum = 1i64;
-        accum *= map[0][0].0 as i64;
-        accum *= map[11][0].0 as i64;
-        accum *= map[0][11].0 as i64;
-        accum *= map[11][11].0 as i64;
-        dbg!(accum);
+
+        finnit(map, tiles, payloads, used);
+
         return;
     }
 
@@ -399,13 +478,13 @@ fn doitall(x: usize, y: usize, map: &mut [[(i32, Layout); 12]; 12], tiles: &Hash
                 valid = false;
             }
 
-            if valid && y != 0 && map[x][y - 1].1.u != lay.d {
+            if valid && y != 0 && map[x][y - 1].1.d != lay.u {
                 valid = false;
             }
 
             if valid {
                 map[x][y] = (*til.0, lay);
-                doitall(x + 1, y, map, &tiles, lookup, used);
+                doitall(x + 1, y, map, &tiles, &payloads, used);
                 map[x][y] = (0, Layout::nil());
             }
         }
@@ -418,22 +497,16 @@ fn main() {
     let chunks = read_groups();
 
     let mut tiles: HashMap<i32, Layout> = HashMap::new();
-    let mut lookup: HashMap<i32, Vec<i32>> = HashMap::new();
-
-    fn poosh(id: i32, val: i32, lookup: &mut HashMap<i32, Vec<i32>>)
-    {
-        match lookup.entry(id) {
-            Entry::Occupied(o) => o.into_mut(),
-            Entry::Vacant(v) => v.insert(Vec::new()),
-        }.push(val);
-    }
-
+    let mut payloads: HashMap<i32, [[bool; 8]; 8]> = HashMap::new();
+    
     for tile in &chunks {
         let id = scan_fmt!(&tile[0], "Tile {}:", i32).unwrap();
 
+        let mut payload = [[false; 8]; 8];
+
         let mut l = 0;
         let mut r = 0;
-        for line in tile.iter().skip(1) {
+        for (lid, line) in tile.iter().skip(1).enumerate() {
             l <<= 1;
             r <<= 1;
             if line.chars().nth(0).unwrap() == '#' {
@@ -441,6 +514,18 @@ fn main() {
             }
             if line.chars().nth(line.len() - 1).unwrap() == '#' {
                 r += 1;
+            }
+
+            if lid != 0 && lid != 9 {
+                let mut plid = [false; 8];
+                for (idx, c) in line.chars().enumerate() {
+                    if idx == 0 || idx == 9 {
+                        continue;
+                    }
+
+                    plid[idx - 1] = c == '#';
+                }
+                payload[lid - 1] = plid;
             }
         }
 
@@ -461,21 +546,13 @@ fn main() {
         }
 
         println!("{}: {} {} {} {}", id, l, r, u, d);
+        println!("{}", payload.iter().map(|lin| lin.iter().map(|&kar| if kar { '#' } else { '.' }).collect::<String>() + "\n").collect::<String>());
 
-        poosh(id, l, &mut lookup);
-        poosh(id, r, &mut lookup);
-        poosh(id, u, &mut lookup);
-        poosh(id, d, &mut lookup);
-
-        poosh(id, invert(l), &mut lookup);
-        poosh(id, invert(r), &mut lookup);
-        poosh(id, invert(u), &mut lookup);
-        poosh(id, invert(d), &mut lookup);
-
-        tiles.insert(id, Layout{u:u, r:r, d:d, l:l});
+        tiles.insert(id, Layout{u:u, r:r, d:d, l:l, rot:0});
+        payloads.insert(id, payload);
     }
 
-    let mut map = [[(0i32, Layout::nil()); 12]; 12];
+    let mut map = [[(0i32, Layout::nil()); SIZE]; SIZE];
 
-    doitall(0, 0, &mut map, &tiles, &lookup, &mut HashSet::new())
+    doitall(0, 0, &mut map, &tiles, &payloads, &mut HashSet::new())
 }

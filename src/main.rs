@@ -2,9 +2,11 @@
 use std::mem;
 use std::io;
 use std::cmp;
+use std::fmt;
 use regex::Regex;
 use std::collections::HashSet;
 use std::collections::HashMap;
+use std::collections::hash_map::Entry;
 use std::iter::FromIterator;
 use num::integer;
 
@@ -298,52 +300,182 @@ fn process_call(mut sin: Vec<(i32, usize)>, kar: char, stateNew: &mut HashSet<Ve
     }
 }
 
+fn invert(mut inp: i32) -> i32 {
+    let mut result = 0;
+    for i in 0..10 {
+        result <<= 1;
+        result |= inp & 1;
+        inp >>= 1;
+    }
+
+    result
+}
+
+#[derive(Clone, Copy)]
+struct Layout {
+    u: i32,
+    r: i32,
+    d: i32,
+    l: i32,
+}
+
+impl fmt::Debug for Layout {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Layout")
+         .field("u", &format!("{:010b}", self.u))
+         .field("r", &format!("{:010b}", self.r))
+         .field("d", &format!("{:010b}", self.d))
+         .field("l", &format!("{:010b}", self.l))
+         .finish()
+    }
+}
+
+
+impl Layout {
+    fn hflip(self) -> Layout {
+        Layout{u: invert(self.u), r: self.l, d: invert(self.d), l: self.r}
+    }
+
+    fn vflip(self) -> Layout {
+        Layout{u: self.d, r: invert(self.r), d: self.u, l: invert(self.l)}
+    }
+
+    fn dflip(self) -> Layout {
+        Layout{u: self.l, r: self.d, d: self.r, l: self.u}
+    }
+
+    fn rot(self, rot: i32) -> Layout {
+        let mut rv = self;
+
+        if rot & (1 << 0) != 0 {
+            rv = rv.hflip();
+        }
+        if rot & (1 << 1) != 0 {
+            rv = rv.vflip();
+        }
+        if rot & (1 << 2) != 0 {
+            rv = rv.dflip();
+        }
+
+        rv
+    }
+
+    fn nil() -> Layout {
+        Layout{u:0, r:0, d:0, l:0}
+    }
+}
+
+fn doitall(x: usize, y: usize, map: &mut [[(i32, Layout); 12]; 12], tiles: &HashMap<i32, Layout>, lookup: &HashMap<i32, Vec<i32>>, used: &mut HashSet<i32>)
+{
+    if x == 12 {
+        doitall(0, y + 1, map, tiles, lookup, used);
+        return;
+    }
+
+    if y == 12 {
+        dbg!("DONE");
+        let mut accum = 1i64;
+        accum *= map[0][0].0 as i64;
+        accum *= map[11][0].0 as i64;
+        accum *= map[0][11].0 as i64;
+        accum *= map[11][11].0 as i64;
+        dbg!(accum);
+        return;
+    }
+
+    for til in tiles {
+        if used.contains(&til.0) {
+            continue;
+        }
+
+        used.insert(*til.0);
+
+        for rot in 0..8 {
+            let mut valid = true;
+
+            let lay = til.1.rot(rot);
+
+            if x != 0 && map[x - 1][y].1.r != lay.l {
+                valid = false;
+            }
+
+            if valid && y != 0 && map[x][y - 1].1.u != lay.d {
+                valid = false;
+            }
+
+            if valid {
+                map[x][y] = (*til.0, lay);
+                doitall(x + 1, y, map, &tiles, lookup, used);
+                map[x][y] = (0, Layout::nil());
+            }
+        }
+
+        used.remove(&til.0);
+    }
+}
+
 fn main() {
     let chunks = read_groups();
-    let mut rules = HashMap::new();
 
-    for inst in &chunks[0] {
-        let init: Vec<&str> = inst.split(": ").collect();
-        let key = init[0].parse::<i32>().unwrap();
-        let tok = init[1];
+    let mut tiles: HashMap<i32, Layout> = HashMap::new();
+    let mut lookup: HashMap<i32, Vec<i32>> = HashMap::new();
 
-        if tok.chars().nth(0).unwrap() == '"' {
-            rules.insert(key, Rule::Literal(tok.chars().nth(1).unwrap()));
-        } else {
-            let mut res = Vec::new();
-            for (id, piece) in tok.split(" | ").enumerate() {
-                let ki = key + 1000 * (id as i32 + 1);
-                rules.insert(ki, Rule::Sequence(piece.split(" ").map(|t| t.parse::<i32>().unwrap()).collect()));
-                res.push(ki);
-            }
-            rules.insert(key, Rule::Split(res));
-        }
+    fn poosh(id: i32, val: i32, lookup: &mut HashMap<i32, Vec<i32>>)
+    {
+        match lookup.entry(id) {
+            Entry::Occupied(o) => o.into_mut(),
+            Entry::Vacant(v) => v.insert(Vec::new()),
+        }.push(val);
     }
 
-    dbg!(&rules);
+    for tile in &chunks {
+        let id = scan_fmt!(&tile[0], "Tile {}:", i32).unwrap();
 
-    let mut count = 0;
-    for line in &chunks[1] {
-        let mut state: HashSet<Vec<(i32, usize)>> = HashSet::new();
-        state.insert(vec![(0, 0)]);
-
-        for kar in line.chars() {
-            // process state here!
-
-            let mut stateNew = HashSet::new();
-
-            for sin in state {
-                process_call(sin, kar, &mut stateNew, &rules);
+        let mut l = 0;
+        let mut r = 0;
+        for line in tile.iter().skip(1) {
+            l <<= 1;
+            r <<= 1;
+            if line.chars().nth(0).unwrap() == '#' {
+                l += 1;
             }
-
-            state = stateNew;
+            if line.chars().nth(line.len() - 1).unwrap() == '#' {
+                r += 1;
+            }
         }
 
-        if state.contains(&Vec::new()) {
-            count += 1;
-            dbg!(&line);
+        let mut u = 0;
+        for kar in tile[1].chars() {
+            u <<= 1;
+            if kar == '#' {
+                u += 1;
+            }
         }
+
+        let mut d = 0;
+        for kar in tile.last().unwrap().chars() {
+            d <<= 1;
+            if kar == '#' {
+                d += 1;
+            }
+        }
+
+        println!("{}: {} {} {} {}", id, l, r, u, d);
+
+        poosh(id, l, &mut lookup);
+        poosh(id, r, &mut lookup);
+        poosh(id, u, &mut lookup);
+        poosh(id, d, &mut lookup);
+
+        poosh(id, invert(l), &mut lookup);
+        poosh(id, invert(r), &mut lookup);
+        poosh(id, invert(u), &mut lookup);
+        poosh(id, invert(d), &mut lookup);
+
+        tiles.insert(id, Layout{u:u, r:r, d:d, l:l});
     }
 
-    dbg!(count);
+    let mut map = [[(0i32, Layout::nil()); 12]; 12];
+
+    doitall(0, 0, &mut map, &tiles, &lookup, &mut HashSet::new())
 }

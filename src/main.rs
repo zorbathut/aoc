@@ -515,8 +515,8 @@ fn main() {
         let ingparsed: HashSet<String> = ingredients.trim().split(' ').map(|s| s.to_string()).collect();
         let allparsed: HashSet<String> = allergens.trim().split(", ").map(|s| s.to_string()).collect();
 
-        for ing in ingparsed.iter() { ingall.insert(ing.clone()); }
-        for ing in allparsed.iter() { allall.insert(ing.clone()); }
+        ingall.extend(ingparsed.clone());
+        allall.extend(allparsed.clone());
 
         recipes.push(Recipe { ingredients: ingparsed, allergens: allparsed });
     }
@@ -534,10 +534,10 @@ fn main() {
 
     let mut possible = HashSet::new();
     for can in &canbe {
-        possible.extend(can.1.iter().cloned());
+        possible.extend(can.1.iter());
     }
 
-    let mut notpossible: HashSet<_> = ingall.difference(&possible).collect();
+    let mut notpossible: HashSet<_> = ingall.iter().map(|s| s).collect::<HashSet<&String>>().difference(&possible).copied().collect();
 
     let res: usize = recipes.iter().map(|rec| {
         notpossible.iter().filter(|&&ing| rec.ingredients.contains(ing)).count()
@@ -547,9 +547,9 @@ fn main() {
     
     dbg!(&canbe);
 
-    let mut allervec: Vec<_> = canbe.iter().map(|kvp| kvp.0).cloned().collect();
+    let mut allervec: Vec<_> = canbe.iter().map(|kvp| kvp.0).collect();
     allervec.sort();
-    let ingrevec: Vec<_> = possible.iter().cloned().collect();
+    let ingrevec: Vec<_> = possible.iter().copied().collect();
 
     dbg!(&allervec);
     dbg!(&ingrevec);
@@ -558,7 +558,7 @@ fn main() {
     for ing in &ingrevec {
         let mut line = Vec::new();
         for all in &allervec {
-            line.push(canbe.get(all).unwrap().contains(ing));
+            line.push(canbe.get(*all).unwrap().contains(*ing));
         }
         matrix.push(line);
     }
@@ -566,8 +566,6 @@ fn main() {
     dbg!(&matrix);
 
     let results = bpm_driver(&matrix);
-
-    let yep: Vec<_> = results.iter().map(|r| ingrevec[r.unwrap()].clone()).collect();
     
-    dbg!(yep.join(","));
+    dbg!(results.iter().map(|r| ingrevec[r.unwrap()]).cloned().collect::<Vec<_>>().join(","));
 }

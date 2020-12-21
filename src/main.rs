@@ -369,95 +369,91 @@ impl Layout {
     }
 }
 
-fn finnit(map: &mut [[(i32, Layout); SIZE]; SIZE], tiles: &HashMap<i32, Layout>, payloads: &HashMap<i32, [[bool; 8]; 8]>, used: &mut HashSet<i32>)
-{
-    // accumulate this dumb thing
-
-    let mut image = [[false; 8*SIZE]; 8*SIZE];
-    let mut imagecount = 0;
-    for my in 0..SIZE {
-        for mx in 0..SIZE {
-            let rot = map[mx][my].1.rot;
-            let payload = &payloads[&map[mx][my].0];
-
-            for ty in 0..8 {
-                for tx in 0..8 {
-                    let mut rx = tx;
-                    let mut ry = ty;
-
-                    if rot & (1 << 0) != 0 {
-                        rx = 7 - rx;
-                    }
-                    if rot & (1 << 1) != 0 {
-                        ry = 7 - ry;
-                    }
-                    if rot & (1 << 2) != 0 {
-                        mem::swap(&mut rx, &mut ry);
-                    }
-
-                    image[mx * 8 + rx][my * 8 + ry] = payload[ty][tx];
-                    if payload[ty][tx] {
-                        imagecount += 1;
-                    }
-                }
-            }
-        }
-    }
-
-    println!("{}", image.iter().map(|lin| lin.iter().map(|&kar| if kar { '#' } else { '.' }).collect::<String>() + "\n").collect::<String>());
-
-    let serpent = [
-        (0, 1),
-        (1, 2),
-        (4, 2),
-        (5, 1),
-        (6, 1),
-        (7, 2),
-        (10, 2),
-        (11, 1),
-        (12, 1),
-        (13, 2),
-        (16, 2),
-        (17, 1),
-        (18, 1),
-        (18, 0),
-        (19, 1),
-    ];
-
-    let mut smon = 0;
-    for tx in 0..image.len() {
-        for ty in 0..image[0].len() {
-            let mut valid = true;
-            for s in serpent.iter() {
-                let px = tx + s.0;
-                let py = ty + s.1;
-                if px >= image.len() || py >= image[0].len() || !image[py][px] {
-                    valid = false;
-                    break;
-                }
-            }
-
-            if valid {
-                println!("found smon {} {}", tx, ty);
-                smon += serpent.len();
-            }
-        }
-    }
-
-    dbg!(imagecount - smon);
-}
-
 fn doitall(x: usize, y: usize, map: &mut [[(i32, Layout); SIZE]; SIZE], tiles: &HashMap<i32, Layout>, payloads: &HashMap<i32, [[bool; 8]; 8]>, used: &mut HashSet<i32>)
 {
     if x == SIZE {
+        println!("{}, {}", x, y);
         doitall(0, y + 1, map, tiles, payloads, used);
         return;
     }
 
     if y == SIZE {
         dbg!("DONE");
+        // accumulate this dumb thing
 
-        finnit(map, tiles, payloads, used);
+        let mut image = [[false; 8*SIZE]; 8*SIZE];
+        let mut imagecount = 0;
+        for my in 0..SIZE {
+            for mx in 0..SIZE {
+                dbg!(map[mx][my]);
+                let rot = map[mx][my].1.rot;
+                let payload = &payloads[&map[mx][my].0];
+
+                for ty in 0..8 {
+                    for tx in 0..8 {
+                        let mut rx = tx;
+                        let mut ry = ty;
+
+                        if rot & (1 << 0) != 0 {
+                            rx = 7 - rx;
+                        }
+                        if rot & (1 << 1) != 0 {
+                            ry = 7 - ry;
+                        }
+                        if rot & (1 << 2) != 0 {
+                            mem::swap(&mut rx, &mut ry);
+                        }
+
+                        image[mx * 8 + rx][my * 8 + ry] = payload[ty][tx];
+                        if payload[ty][tx] {
+                            imagecount += 1;
+                        }
+                    }
+                }
+            }
+        }
+
+        println!("{}", image.iter().map(|lin| lin.iter().map(|&kar| if kar { '#' } else { '.' }).collect::<String>() + "\n").collect::<String>());
+
+        let serpent = [
+            (0, 1),
+            (1, 2),
+            (4, 2),
+            (5, 1),
+            (6, 1),
+            (7, 2),
+            (10, 2),
+            (11, 1),
+            (12, 1),
+            (13, 2),
+            (16, 2),
+            (17, 1),
+            (18, 1),
+            (18, 0),
+            (19, 1),
+        ];
+
+        let mut smon = 0;
+        for tx in 0..image.len() {
+            for ty in 0..image[0].len() {
+                let mut valid = true;
+                for s in serpent.iter() {
+                    let px = tx + s.0;
+                    let py = ty + s.1;
+                    if px >= image.len() || py >= image[0].len() || !image[py][px] {
+                        valid = false;
+                        break;
+                    }
+                }
+
+                if valid {
+                    println!("found smon {} {}", tx, ty);
+                    smon += serpent.len();
+                }
+            }
+        }
+
+        dbg!(imagecount - smon);
 
         return;
     }
@@ -493,66 +489,50 @@ fn doitall(x: usize, y: usize, map: &mut [[(i32, Layout); SIZE]; SIZE], tiles: &
     }
 }
 
+#[derive(Debug)]
+pub struct Recipe {
+    pub ingredients: HashSet<String>,
+    pub allergens: HashSet<String>,
+}
+
 fn main() {
-    let chunks = read_groups();
+    let mut recipes = Vec::new();
+    let mut ingall = HashSet::new();
+    let mut allall = HashSet::new();
 
-    let mut tiles: HashMap<i32, Layout> = HashMap::new();
-    let mut payloads: HashMap<i32, [[bool; 8]; 8]> = HashMap::new();
-    
-    for tile in &chunks {
-        let id = scan_fmt!(&tile[0], "Tile {}:", i32).unwrap();
+    for line in read_lines() {
+        let (ingredients, allergens) = scan_fmt!(&line, "{[^(]} (contains {[^)]})", String, String).unwrap();
 
-        let mut payload = [[false; 8]; 8];
+        let ingparsed: HashSet<String> = ingredients.trim().split(' ').map(|s| s.to_string()).collect();
+        let allparsed: HashSet<String> = allergens.trim().split(", ").map(|s| s.to_string()).collect();
 
-        let mut l = 0;
-        let mut r = 0;
-        for (lid, line) in tile.iter().skip(1).enumerate() {
-            l <<= 1;
-            r <<= 1;
-            if line.chars().nth(0).unwrap() == '#' {
-                l += 1;
-            }
-            if line.chars().nth(line.len() - 1).unwrap() == '#' {
-                r += 1;
-            }
+        for ing in ingparsed.iter() { ingall.insert(ing.clone()); }
+        for ing in allparsed.iter() { allall.insert(ing.clone()); }
 
-            if lid != 0 && lid != 9 {
-                let mut plid = [false; 8];
-                for (idx, c) in line.chars().enumerate() {
-                    if idx == 0 || idx == 9 {
-                        continue;
-                    }
-
-                    plid[idx - 1] = c == '#';
-                }
-                payload[lid - 1] = plid;
-            }
-        }
-
-        let mut u = 0;
-        for kar in tile[1].chars() {
-            u <<= 1;
-            if kar == '#' {
-                u += 1;
-            }
-        }
-
-        let mut d = 0;
-        for kar in tile.last().unwrap().chars() {
-            d <<= 1;
-            if kar == '#' {
-                d += 1;
-            }
-        }
-
-        println!("{}: {} {} {} {}", id, l, r, u, d);
-        println!("{}", payload.iter().map(|lin| lin.iter().map(|&kar| if kar { '#' } else { '.' }).collect::<String>() + "\n").collect::<String>());
-
-        tiles.insert(id, Layout{u:u, r:r, d:d, l:l, rot:0});
-        payloads.insert(id, payload);
+        recipes.push(Recipe { ingredients: ingparsed, allergens: allparsed });
     }
 
-    let mut map = [[(0i32, Layout::nil()); SIZE]; SIZE];
+    let mut canbe = HashMap::new();
+    for all in allall {
+        let mut recps = recipes.iter().filter(|rec| rec.allergens.contains(&all)).map(|rec| &rec.ingredients);
+        let mut cur = recps.next().unwrap().clone();
+        for item in recps {
+            cur = cur.intersection(item).map(|s| s.clone()).collect();
+        }
 
-    doitall(0, 0, &mut map, &tiles, &payloads, &mut HashSet::new())
+        canbe.insert(all, cur);
+    }
+
+    let mut possible = HashSet::new();
+    for can in canbe {
+        possible.extend(can.1);
+    }
+
+    let mut notpossible: HashSet<_> = ingall.difference(&possible).collect();
+
+    let res: usize = recipes.iter().map(|rec| {
+        notpossible.iter().filter(|&&ing| rec.ingredients.contains(ing)).count()
+    }).sum();
+
+    dbg!(res);
 }

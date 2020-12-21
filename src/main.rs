@@ -200,6 +200,15 @@ fn bpm(matches: &Vec<Vec<bool>>, group: usize, seen: &mut Vec<bool>, assignments
     return false;
 }
 
+fn bpm_driver(matches: &Vec<Vec<bool>>) -> Vec<Option<usize>> {
+    let mut rv = vec![None; matches.len()];
+    for i in 0..matches.len() {
+        bpm(matches, i, &mut vec![false; matches.len()], &mut rv);
+    }
+
+    rv
+}
+
 lazy_static! {
     static ref REGEX_PARENS: regex::Regex = Regex::new(r"\(([^()]+)\)").unwrap();
     static ref REGEX_PLUS: regex::Regex = Regex::new(r"([0-9]+) ([+]) ([0-9]+)").unwrap();
@@ -524,8 +533,8 @@ fn main() {
     }
 
     let mut possible = HashSet::new();
-    for can in canbe {
-        possible.extend(can.1);
+    for can in &canbe {
+        possible.extend(can.1.iter().cloned());
     }
 
     let mut notpossible: HashSet<_> = ingall.difference(&possible).collect();
@@ -535,4 +544,30 @@ fn main() {
     }).sum();
 
     dbg!(res);
+    
+    dbg!(&canbe);
+
+    let mut allervec: Vec<_> = canbe.iter().map(|kvp| kvp.0).cloned().collect();
+    allervec.sort();
+    let ingrevec: Vec<_> = possible.iter().cloned().collect();
+
+    dbg!(&allervec);
+    dbg!(&ingrevec);
+
+    let mut matrix = Vec::new();
+    for ing in &ingrevec {
+        let mut line = Vec::new();
+        for all in &allervec {
+            line.push(canbe.get(all).unwrap().contains(ing));
+        }
+        matrix.push(line);
+    }
+
+    dbg!(&matrix);
+
+    let results = bpm_driver(&matrix);
+
+    let yep: Vec<_> = results.iter().map(|r| ingrevec[r.unwrap()].clone()).collect();
+    
+    dbg!(yep.join(","));
 }

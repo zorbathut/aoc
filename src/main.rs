@@ -505,67 +505,37 @@ pub struct Recipe {
 }
 
 fn main() {
-    let mut recipes = Vec::new();
-    let mut ingall = HashSet::new();
-    let mut allall = HashSet::new();
-
-    for line in read_lines() {
-        let (ingredients, allergens) = scan_fmt!(&line, "{[^(]} (contains {[^)]})", String, String).unwrap();
-
-        let ingparsed: HashSet<String> = ingredients.trim().split(' ').map(|s| s.to_string()).collect();
-        let allparsed: HashSet<String> = allergens.trim().split(", ").map(|s| s.to_string()).collect();
-
-        ingall.extend(ingparsed.clone());
-        allall.extend(allparsed.clone());
-
-        recipes.push(Recipe { ingredients: ingparsed, allergens: allparsed });
+    let mut groups = Vec::new();
+    for group in read_groups() {
+        groups.push(group.iter().skip(1).map(|i| i.parse::<i32>().unwrap()).collect::<Vec<_>>());
     }
 
-    let mut canbe = HashMap::new();
-    for all in allall {
-        let mut recps = recipes.iter().filter(|rec| rec.allergens.contains(&all)).map(|rec| &rec.ingredients);
-        let mut cur = recps.next().unwrap().clone();
-        for item in recps {
-            cur = cur.intersection(item).map(|s| s.clone()).collect();
+    loop {
+        let lhs = groups[0][0];
+        let rhs = groups[1][0];
+
+        groups[0].remove(0);
+        groups[1].remove(0);
+
+        if lhs > rhs {
+            groups[0].push(lhs);
+            groups[0].push(rhs);
+        } else {
+            groups[1].push(rhs);
+            groups[1].push(lhs);
         }
 
-        canbe.insert(all, cur);
-    }
+        if groups[0].len() == 0 || groups[1].len() == 0 {
+            let result = if groups[0].len() == 0 { &groups[1] } else { &groups[0] };
 
-    let mut possible = HashSet::new();
-    for can in &canbe {
-        possible.extend(can.1.iter());
-    }
+            let mut accum = 0;
+            for (idx, item) in result.iter().enumerate() {
+                accum += item * (result.len() - idx) as i32;
+            }
 
-    let mut notpossible: HashSet<_> = ingall.iter().map(|s| s).collect::<HashSet<&String>>().difference(&possible).copied().collect();
+            dbg!(accum);
 
-    let res: usize = recipes.iter().map(|rec| {
-        notpossible.iter().filter(|&&ing| rec.ingredients.contains(ing)).count()
-    }).sum();
-
-    dbg!(res);
-    
-    dbg!(&canbe);
-
-    let mut allervec: Vec<_> = canbe.iter().map(|kvp| kvp.0).collect();
-    allervec.sort();
-    let ingrevec: Vec<_> = possible.iter().copied().collect();
-
-    dbg!(&allervec);
-    dbg!(&ingrevec);
-
-    let mut matrix = Vec::new();
-    for ing in &ingrevec {
-        let mut line = Vec::new();
-        for all in &allervec {
-            line.push(canbe.get(*all).unwrap().contains(*ing));
+            return;
         }
-        matrix.push(line);
     }
-
-    dbg!(&matrix);
-
-    let results = bpm_driver(&matrix);
-    
-    dbg!(results.iter().map(|r| ingrevec[r.unwrap()]).cloned().collect::<Vec<_>>().join(","));
 }

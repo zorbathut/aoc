@@ -504,38 +504,72 @@ pub struct Recipe {
     pub allergens: HashSet<String>,
 }
 
-fn main() {
-    let mut groups = Vec::new();
-    for group in read_groups() {
-        groups.push(group.iter().skip(1).map(|i| i.parse::<i32>().unwrap()).collect::<Vec<_>>());
-    }
+fn wanner(mut lhsd: Vec<usize>, mut rhsd: Vec<usize>) -> i32 {
+    let mut matches = HashSet::new();
 
+    // TODO infiniloop
     loop {
-        let lhs = groups[0][0];
-        let rhs = groups[1][0];
+        let smatch = (lhsd.clone(), rhsd.clone());
+        if matches.contains(&smatch) {
+            dbg!("EXIT");
+            return 0;
+        }
+        matches.insert(smatch);
 
-        groups[0].remove(0);
-        groups[1].remove(0);
+        let lhs = lhsd[0];
+        let rhs = rhsd[0];
 
-        if lhs > rhs {
-            groups[0].push(lhs);
-            groups[0].push(rhs);
+        lhsd.remove(0);
+        rhsd.remove(0);
+
+        let mut won = false;
+        let mut winner = 0;
+
+        if lhs <= lhsd.len() && rhs <= rhsd.len() {
+            let rw = wanner(lhsd.iter().take(lhs).copied().collect(), rhsd.iter().take(rhs).copied().collect());
+
+            if rw == 0 {
+                lhsd.push(lhs);
+                lhsd.push(rhs);
+            } else {
+                rhsd.push(rhs);
+                rhsd.push(lhs);
+            }
         } else {
-            groups[1].push(rhs);
-            groups[1].push(lhs);
+            if lhs > rhs {
+                lhsd.push(lhs);
+                lhsd.push(rhs);
+            } else {
+                rhsd.push(rhs);
+                rhsd.push(lhs);
+            }
         }
 
-        if groups[0].len() == 0 || groups[1].len() == 0 {
-            let result = if groups[0].len() == 0 { &groups[1] } else { &groups[0] };
+        if lhsd.len() == 0 || rhsd.len() == 0 {
+            won = true;
+            winner = if lhsd.len() == 0 { 1 } else { 0 };
+        }
+
+        if won {
+            let result = if winner == 0 { &lhsd } else { &rhsd };
 
             let mut accum = 0;
             for (idx, item) in result.iter().enumerate() {
-                accum += item * (result.len() - idx) as i32;
+                accum += item * (result.len() - idx) as usize;
             }
 
             dbg!(accum);
 
-            return;
+            return winner;
         }
     }
+}
+
+fn main() {
+    let mut groups = Vec::new();
+    for group in read_groups() {
+        groups.push(group.iter().skip(1).map(|i| i.parse::<usize>().unwrap()).collect::<Vec<_>>());
+    }
+
+    wanner(groups[0].clone(), groups[1].clone());
 }

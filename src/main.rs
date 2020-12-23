@@ -566,10 +566,58 @@ fn wanner(mut lhsd: Vec<usize>, mut rhsd: Vec<usize>) -> i32 {
 }
 
 fn main() {
-    let mut groups = Vec::new();
-    for group in read_groups() {
-        groups.push(group.iter().skip(1).map(|i| i.parse::<usize>().unwrap()).collect::<Vec<_>>());
+    let mut cups = Vec::new();
+    for cup in "368195742".chars() {
+        cups.push(cup as i32 - '0' as i32);
     }
 
-    wanner(groups[0].clone(), groups[1].clone());
+    let mut mov = 1;
+    let mut cursor = 0;
+    for i in 0..100 {
+        let mut orig = cups[cursor];
+        let mut target = cups[cursor];
+
+        println!("{}: {} target {}", mov, cups.iter().map(|i| i.to_string()).collect::<String>(), target);
+
+        let c1 = cups.remove(if cursor + 1 < cups.len() { cursor + 1 } else { 0 });
+        let c2 = cups.remove(if cursor + 1 < cups.len() { cursor + 1 } else { 0 });
+        let c3 = cups.remove(if cursor + 1 < cups.len() { cursor + 1 } else { 0 });
+        
+        loop {
+            target -= 1;
+            if target == 0 { target = 9 };
+            match cups.iter().position(|&i| i == target) {
+                None => continue,
+                Some(idx) => {
+                    println!("Moved {} {} {} to {}", c1, c2, c3, target);
+                    cups.insert(idx + 1, c3);
+                    cups.insert(idx + 1, c2);
+                    cups.insert(idx + 1, c1);
+
+                    while cups[cursor] != orig {
+                        let rem = cups.remove(0);
+                        cups.push(rem);
+                    }
+
+                    break;
+                }
+            }
+
+            
+        }
+
+        cursor = (cursor + 1) % 9;
+        mov += 1;
+
+        println!("{}: {}", mov, cups.iter().map(|i| i.to_string()).collect::<String>());
+    }
+
+    while cups[0] != 1 {
+        let rem = cups.remove(0);
+        cups.push(rem);
+    }
+
+    cups.remove(0);
+
+    dbg!(cups);
 }

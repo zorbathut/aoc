@@ -566,58 +566,86 @@ fn wanner(mut lhsd: Vec<usize>, mut rhsd: Vec<usize>) -> i32 {
 }
 
 fn main() {
-    let mut cups = Vec::new();
-    for cup in "368195742".chars() {
-        cups.push(cup as i32 - '0' as i32);
-    }
-
-    let mut mov = 1;
+    let mut next: Vec<usize> = Vec::new();
+    let mut prev: Vec<usize> = Vec::new();
     let mut cursor = 0;
-    for i in 0..100 {
-        let mut orig = cups[cursor];
-        let mut target = cups[cursor];
-
-        println!("{}: {} target {}", mov, cups.iter().map(|i| i.to_string()).collect::<String>(), target);
-
-        let c1 = cups.remove(if cursor + 1 < cups.len() { cursor + 1 } else { 0 });
-        let c2 = cups.remove(if cursor + 1 < cups.len() { cursor + 1 } else { 0 });
-        let c3 = cups.remove(if cursor + 1 < cups.len() { cursor + 1 } else { 0 });
-        
-        loop {
-            target -= 1;
-            if target == 0 { target = 9 };
-            match cups.iter().position(|&i| i == target) {
-                None => continue,
-                Some(idx) => {
-                    println!("Moved {} {} {} to {}", c1, c2, c3, target);
-                    cups.insert(idx + 1, c3);
-                    cups.insert(idx + 1, c2);
-                    cups.insert(idx + 1, c1);
-
-                    while cups[cursor] != orig {
-                        let rem = cups.remove(0);
-                        cups.push(rem);
-                    }
-
-                    break;
-                }
-            }
-
-            
+    {
+        let mut cups: Vec<usize> = Vec::new();
+        /*for cup in "389125467".chars() {
+            cups.push(cup as usize - '1' as usize);
+        }*/
+        for cup in "368195742".chars() {
+            cups.push(cup as usize - '1' as usize);
+        }
+        for i in 9..1_000_000 {
+            cups.push(i);
         }
 
-        cursor = (cursor + 1) % 9;
-        mov += 1;
+        next.resize(cups.len(), 0);
+        prev.resize(cups.len(), 0);
 
-        println!("{}: {}", mov, cups.iter().map(|i| i.to_string()).collect::<String>());
+        for i in 0..cups.len() - 1 {
+            next[cups[i]] = cups[i + 1];
+        }
+        next[*cups.last().unwrap()] = cups[0];
+
+        for j in 0..next.len() {
+            prev[next[j]] = j;
+        }
+
+        cursor = cups[0];
+
+        //dbg!(next, prev);
     }
 
-    while cups[0] != 1 {
-        let rem = cups.remove(0);
-        cups.push(rem);
+    fn dbdump(next: &Vec<usize>, start: usize) -> String
+    {
+        let mut rv = String::new();
+        let mut cursor = start;
+        loop {
+            rv += &(cursor + 1).to_string();
+            cursor = next[cursor];
+
+            if cursor == start {
+                break;
+            }
+        }
+
+        rv
     }
 
-    cups.remove(0);
+    let mut idx = 1;
+    for i in 0..10_000_001 {
+        //println!("{}: {}", i, dbdump(&next, cursor));
 
-    dbg!(cups);
+        if i % 1000 == 0 {
+            println!("{}", i);
+        }
+
+        let splice_beginning = next[cursor];
+        let splice_endpoint = next[next[splice_beginning]];
+        
+        let mut target = cursor;
+        while target == cursor || target == splice_beginning || target == next[splice_beginning] || target == splice_endpoint {
+            target = (target + next.len() - 1) % next.len();
+        }
+
+        //println!("{}: {}, target is {}", i, dbdump(&next, cursor), target + 1);
+
+        next[cursor] = next[splice_endpoint];
+        prev[next[splice_endpoint]] = cursor;
+
+        let target_next = next[target];
+
+        next[target] = splice_beginning;
+        prev[target_next] = splice_endpoint;
+        prev[splice_beginning] = target;
+        next[splice_endpoint] = target_next;
+
+        cursor = next[cursor];
+
+        //println!("{}: {}", mov, cups.iter().map(|i| i.to_string()).collect::<String>());*/
+    }
+
+    dbg!((next[0] + 1) * (next[next[0]] + 1));
 }

@@ -595,5 +595,40 @@ fn main() {
         }
     }
 
+    let dx = [-1, 1, 0, 1, -1, 0];
+    let dy = [0, 0, -1, -1, 1, 1];
+
+    for i in 1..=100 {
+        let mut flumped = HashSet::new();
+
+        let sx = flipped.iter().map(|i| i.0).min().unwrap() - 2;
+        let sy = flipped.iter().map(|i| i.1).min().unwrap() - 2;
+        let ex = flipped.iter().map(|i| i.0).max().unwrap() + 2;
+        let ey = flipped.iter().map(|i| i.1).max().unwrap() + 2;
+
+        for tx in sx..ex {
+            for ty in sy..ey {
+                let mut ct = 0;
+                for d in 0..6 {
+                    let rx = tx + dx[d];
+                    let ry = ty + dy[d];
+                    if flipped.contains(&(rx, ry)) {
+                        ct += 1;
+                    }
+                }
+
+                if flipped.contains(&(tx, ty)) && (ct == 1 || ct == 2) {
+                    flumped.insert((tx, ty));
+                } else if !flipped.contains(&(tx, ty)) && ct == 2 {
+                    flumped.insert((tx, ty));
+                }
+            }
+        }
+
+        flipped = flumped;
+
+        println!("{}: {} ({} {} {} {})", i, flipped.len(), sx, sy, ex, ey);
+    }
+
     dbg!(flipped.len());
 }

@@ -565,87 +565,35 @@ fn wanner(mut lhsd: Vec<usize>, mut rhsd: Vec<usize>) -> i32 {
     }
 }
 
+lazy_static! {
+    static ref REGEX_TILE: regex::Regex = Regex::new(r"(e|w|ne|nw|se|sw)").unwrap();
+}
+
 fn main() {
-    let mut next: Vec<usize> = Vec::new();
-    let mut prev: Vec<usize> = Vec::new();
-    let mut cursor = 0;
-    {
-        let mut cups: Vec<usize> = Vec::new();
-        /*for cup in "389125467".chars() {
-            cups.push(cup as usize - '1' as usize);
-        }*/
-        for cup in "368195742".chars() {
-            cups.push(cup as usize - '1' as usize);
-        }
-        for i in 9..1_000_000 {
-            cups.push(i);
-        }
+    let mut flipped = HashSet::new();
 
-        next.resize(cups.len(), 0);
-        prev.resize(cups.len(), 0);
+    for line in read_lines() {
+        let mut x = 0;
+        let mut y = 0;
 
-        for i in 0..cups.len() - 1 {
-            next[cups[i]] = cups[i + 1];
-        }
-        next[*cups.last().unwrap()] = cups[0];
-
-        for j in 0..next.len() {
-            prev[next[j]] = j;
-        }
-
-        cursor = cups[0];
-
-        //dbg!(next, prev);
-    }
-
-    fn dbdump(next: &Vec<usize>, start: usize) -> String
-    {
-        let mut rv = String::new();
-        let mut cursor = start;
-        loop {
-            rv += &(cursor + 1).to_string();
-            cursor = next[cursor];
-
-            if cursor == start {
-                break;
+        for mv in REGEX_TILE.captures_iter(&line) {
+            match mv.get(0).unwrap().as_str() {
+                "w" => x -= 1,
+                "e" => x += 1,
+                "nw" => y -= 1,
+                "ne" => { y -= 1; x += 1; },
+                "sw" => { y += 1; x -= 1; },
+                "se" => y += 1,
+                _ => panic!(),
             }
         }
 
-        rv
+        if flipped.contains(&(x, y)) {
+            flipped.remove(&(x, y));
+        } else {
+            flipped.insert((x, y));
+        }
     }
 
-    let mut idx = 1;
-    for i in 0..10_000_001 {
-        //println!("{}: {}", i, dbdump(&next, cursor));
-
-        if i % 1000 == 0 {
-            println!("{}", i);
-        }
-
-        let splice_beginning = next[cursor];
-        let splice_endpoint = next[next[splice_beginning]];
-        
-        let mut target = cursor;
-        while target == cursor || target == splice_beginning || target == next[splice_beginning] || target == splice_endpoint {
-            target = (target + next.len() - 1) % next.len();
-        }
-
-        //println!("{}: {}, target is {}", i, dbdump(&next, cursor), target + 1);
-
-        next[cursor] = next[splice_endpoint];
-        prev[next[splice_endpoint]] = cursor;
-
-        let target_next = next[target];
-
-        next[target] = splice_beginning;
-        prev[target_next] = splice_endpoint;
-        prev[splice_beginning] = target;
-        next[splice_endpoint] = target_next;
-
-        cursor = next[cursor];
-
-        //println!("{}: {}", mov, cups.iter().map(|i| i.to_string()).collect::<String>());*/
-    }
-
-    dbg!((next[0] + 1) * (next[next[0]] + 1));
+    dbg!(flipped.len());
 }

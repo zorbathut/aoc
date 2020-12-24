@@ -9,6 +9,7 @@ use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 use std::iter::FromIterator;
 use num::integer;
+use itertools::Itertools;
 
 #[macro_use] extern crate lazy_static;
 #[macro_use] extern crate scan_fmt;
@@ -601,13 +602,11 @@ fn main() {
     for i in 1..=100 {
         let mut flumped = HashSet::new();
 
-        let sx = flipped.iter().map(|i| i.0).min().unwrap() - 2;
-        let sy = flipped.iter().map(|i| i.1).min().unwrap() - 2;
-        let ex = flipped.iter().map(|i| i.0).max().unwrap() + 2;
-        let ey = flipped.iter().map(|i| i.1).max().unwrap() + 2;
+        let xrange = flipped.iter().map(|i| i.0).minmax().into_option().unwrap();
+        let yrange = flipped.iter().map(|i| i.1).minmax().into_option().unwrap();
 
-        for tx in sx..ex {
-            for ty in sy..ey {
+        for tx in xrange.0 - 2 .. xrange.1 + 2 {
+            for ty in yrange.0 - 2 .. yrange.1 + 2 {
                 let mut ct = 0;
                 for d in 0..6 {
                     let rx = tx + dx[d];
@@ -627,7 +626,7 @@ fn main() {
 
         flipped = flumped;
 
-        println!("{}: {} ({} {} {} {})", i, flipped.len(), sx, sy, ex, ey);
+        println!("{}: {} ({:#?} {:#?})", i, flipped.len(), xrange, yrange);
     }
 
     dbg!(flipped.len());

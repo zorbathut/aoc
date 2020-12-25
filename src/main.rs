@@ -570,64 +570,38 @@ lazy_static! {
     static ref REGEX_TILE: regex::Regex = Regex::new(r"(e|w|ne|nw|se|sw)").unwrap();
 }
 
+fn getloop(subject: i64, public: i64) -> i64 {
+    let mut val = 1;
+    for i in 1.. {
+        val = (val * subject) % 20201227;
+
+        if val == public {
+            return i;
+        }
+    }
+
+    panic!();
+}
+
+fn transform(subject: i64, lop: i64) -> i64 {
+    let mut val = 1;
+    for _ in 0..lop {
+        val = (val * subject) % 20201227;
+    }
+
+    val
+}
+
 fn main() {
-    let mut flipped = HashSet::new();
+    let cardkey = 10212254;
+    let doorkey = 12577395;
 
-    for line in read_lines() {
-        let mut x = 0;
-        let mut y = 0;
+    let cardloop = getloop(7, cardkey);
+    let doorloop = getloop(7, doorkey);
 
-        for mv in REGEX_TILE.captures_iter(&line) {
-            match mv.get(0).unwrap().as_str() {
-                "w" => x -= 1,
-                "e" => x += 1,
-                "nw" => y -= 1,
-                "ne" => { y -= 1; x += 1; },
-                "sw" => { y += 1; x -= 1; },
-                "se" => y += 1,
-                _ => panic!(),
-            }
-        }
+    dbg!(cardloop, doorloop);
 
-        if flipped.contains(&(x, y)) {
-            flipped.remove(&(x, y));
-        } else {
-            flipped.insert((x, y));
-        }
-    }
+    let enckey = transform(doorkey, cardloop);
 
-    let dx = [-1, 1, 0, 1, -1, 0];
-    let dy = [0, 0, -1, -1, 1, 1];
-
-    for i in 1..=100 {
-        let mut flumped = HashSet::new();
-
-        let xrange = flipped.iter().map(|i| i.0).minmax().into_option().unwrap();
-        let yrange = flipped.iter().map(|i| i.1).minmax().into_option().unwrap();
-
-        for tx in xrange.0 - 2 .. xrange.1 + 2 {
-            for ty in yrange.0 - 2 .. yrange.1 + 2 {
-                let mut ct = 0;
-                for d in 0..6 {
-                    let rx = tx + dx[d];
-                    let ry = ty + dy[d];
-                    if flipped.contains(&(rx, ry)) {
-                        ct += 1;
-                    }
-                }
-
-                if flipped.contains(&(tx, ty)) && (ct == 1 || ct == 2) {
-                    flumped.insert((tx, ty));
-                } else if !flipped.contains(&(tx, ty)) && ct == 2 {
-                    flumped.insert((tx, ty));
-                }
-            }
-        }
-
-        flipped = flumped;
-
-        println!("{}: {} ({:#?} {:#?})", i, flipped.len(), xrange, yrange);
-    }
-
-    dbg!(flipped.len());
+    dbg!(enckey);
 }

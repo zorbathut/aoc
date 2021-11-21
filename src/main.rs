@@ -593,15 +593,17 @@ fn transform(subject: i64, lop: i64) -> i64 {
 }
 
 fn main() {
-    let cardkey = 10212254;
-    let doorkey = 12577395;
+    let mut o = 1;
+    let mut e = 1;
+    for _ in 1..20 {
+        let no = e;
+        let ne = o + e;
 
-    let cardloop = getloop(7, cardkey);
-    let doorloop = getloop(7, doorkey);
+        o = no;
+        e = ne;
 
-    dbg!(cardloop, doorloop);
+        println!("{} {}", o, e);
+    }
 
-    let enckey = transform(doorkey, cardloop);
-
-    dbg!(enckey);
+    dbg!(o);
 }

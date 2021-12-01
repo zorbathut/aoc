@@ -596,8 +596,8 @@ fn main() {
     let vals = read_numbers();
 
     let mut yaku = 0;
-    for i in 0..vals.len() - 1 {
-        if vals[i] < vals[i + 1] {
+    for i in 0..vals.len() - 3 {
+        if vals[i] < vals[i + 3] {
             yaku = yaku + 1;
         }
     }

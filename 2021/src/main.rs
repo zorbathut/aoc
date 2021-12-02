@@ -630,12 +630,13 @@ fn main() {
 
     let mut depth = 0;
     let mut dist = 0;
+    let mut aim = 0;
 
     for dir in dirs {
         match dir {
-            Direction::Forward(amt) => dist = dist + amt,
-            Direction::Up(amt) => depth = depth - amt,
-            Direction::Down(amt) => depth = depth + amt,
+            Direction::Forward(amt) => { dist = dist + amt; depth = depth + aim * amt },
+            Direction::Up(amt) => aim = aim - amt,
+            Direction::Down(amt) => aim = aim + amt,
         }
     }
     

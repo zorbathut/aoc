@@ -110,6 +110,39 @@ fn read_program() -> Vec<Instruction> {
     instructions
 }
 
+enum Direction {
+    Forward(i32),
+    Down(i32),
+    Up(i32),
+}
+
+fn read_directions() -> Vec<Direction> {
+    let lines = read_lines();
+
+    let mut directions: Vec<Direction> = Vec::new();
+
+    let re = Regex::new(r"(?P<dir>[a-z]+) (?P<arg>[\d]+)").unwrap();
+
+    for line in lines {
+        println!("{:#?}", line);
+
+        let captures = re.captures(&line).unwrap();
+
+        let inst = captures.name("dir").unwrap().as_str();
+        let arg = captures.name("arg").unwrap().as_str().parse::<i32>().unwrap();
+        
+        if inst == "forward" {
+            directions.push(Direction::Forward(arg));
+        } else if inst == "down" {
+            directions.push(Direction::Down(arg));
+        } else if inst == "up" {
+            directions.push(Direction::Up(arg));
+        }
+    }
+
+    directions
+}
+
 trait StdinExt {
     fn read_line_direct(&mut self) -> String;
 }
@@ -593,14 +626,18 @@ fn transform(subject: i64, lop: i64) -> i64 {
 }
 
 fn main() {
-    let vals = read_numbers();
+    let dirs = read_directions();
 
-    let mut yaku = 0;
-    for i in 0..vals.len() - 3 {
-        if vals[i] < vals[i + 3] {
-            yaku = yaku + 1;
+    let mut depth = 0;
+    let mut dist = 0;
+
+    for dir in dirs {
+        match dir {
+            Direction::Forward(amt) => dist = dist + amt,
+            Direction::Up(amt) => depth = depth - amt,
+            Direction::Down(amt) => depth = depth + amt,
         }
     }
-
-    dbg!(yaku);
+    
+    dbg!(depth * dist);
 }

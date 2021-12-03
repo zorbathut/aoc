@@ -127,19 +127,26 @@ lazy_static! {
 }
 
 fn main() {
-    let dirs = read_directions();
+    let dat = read_lines();
 
-    let mut depth = 0;
-    let mut dist = 0;
-    let mut aim = 0;
+    let mut gamma = 0;
+    let mut epsilon = 0;
 
-    for dir in dirs {
-        match dir {
-            Direction::Forward(amt) => { dist = dist + amt; depth = depth + aim * amt },
-            Direction::Up(amt) => aim = aim - amt,
-            Direction::Down(amt) => aim = aim + amt,
+    for dig in 0..dat[0].len() {
+        let mut ones = dat.iter().map(|x| x.chars().nth(dig).unwrap()).filter(|x| *x == '1').count();
+
+        gamma = gamma << 1;
+        epsilon = epsilon << 1;
+
+        if ones > dat.len() / 2 {
+            gamma = gamma + 1;    
+        } else {
+            epsilon = epsilon + 1;
         }
     }
     
-    dbg!(depth * dist);
+    dbg!(gamma);
+    dbg!(epsilon);
+
+    dbg!(gamma * epsilon);
 }

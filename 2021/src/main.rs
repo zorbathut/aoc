@@ -132,16 +132,50 @@ fn main() {
     let mut gamma = 0;
     let mut epsilon = 0;
 
+    let mut oxy = HashSet::<String>::from_iter(dat.iter().cloned());
+    let mut co2 = HashSet::<String>::from_iter(dat.iter().cloned());
+
     for dig in 0..dat[0].len() {
         let mut ones = dat.iter().map(|x| x.chars().nth(dig).unwrap()).filter(|x| *x == '1').count();
 
         gamma = gamma << 1;
         epsilon = epsilon << 1;
 
-        if ones > dat.len() / 2 {
-            gamma = gamma + 1;    
+        if ones * 2 >= dat.len() {
+            gamma = gamma + 1;
         } else {
             epsilon = epsilon + 1;
+        }
+
+        if oxy.len() > 1 {
+            let mut oxones = oxy.iter().map(|x| x.chars().nth(dig).unwrap()).filter(|x| *x == '1').count();
+            dbg!(oxones);
+
+            if (oxones * 2 >= oxy.len())
+            {
+                oxy = HashSet::from_iter(oxy.iter().filter(|x| x.chars().nth(dig).unwrap() == '1').cloned());
+            }
+            else
+            {
+                oxy = HashSet::from_iter(oxy.iter().filter(|x| x.chars().nth(dig).unwrap() == '0').cloned());
+            }
+
+            dbg!(oxy.len());
+        }
+        if co2.len() > 1 {
+            let mut coones = co2.iter().map(|x| x.chars().nth(dig).unwrap()).filter(|x| *x == '1').count();
+            dbg!(coones);
+
+            if (coones * 2 >= co2.len())
+            {
+                co2 = HashSet::from_iter(co2.iter().filter(|x| x.chars().nth(dig).unwrap() == '0').cloned());
+            }
+            else
+            {
+                co2 = HashSet::from_iter(co2.iter().filter(|x| x.chars().nth(dig).unwrap() == '1').cloned());
+            }
+
+            dbg!(co2.len());
         }
     }
     
@@ -149,4 +183,12 @@ fn main() {
     dbg!(epsilon);
 
     dbg!(gamma * epsilon);
+
+    dbg!(&oxy);
+    dbg!(&co2);
+
+    dbg!(i32::from_str_radix(oxy.iter().next().unwrap(), 2));
+    dbg!(i32::from_str_radix(co2.iter().next().unwrap(), 2));
+
+    dbg!(i32::from_str_radix(oxy.iter().next().unwrap(), 2).unwrap() * i32::from_str_radix(co2.iter().next().unwrap(), 2).unwrap());
 }

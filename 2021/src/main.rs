@@ -141,7 +141,7 @@ fn main() {
         boards.push(board);
     }
 
-    let mut soonest = 1000;
+    let mut soonest = 0;
     let mut score = 0;
     for board in boards.iter() {
         let mut bm = board.clone();
@@ -155,6 +155,7 @@ fn main() {
                 }
             }
 
+            let mut done = false;
             for len in 0..5 {
                 let mut xwon = true;
                 let mut ywon = true;
@@ -168,14 +169,20 @@ fn main() {
                 }
                 
                 if xwon || ywon {
-                    if idx < soonest {
+                    if idx > soonest {
                         dbg!("WIN");
                         dbg!(&bm);
 
                         soonest = idx;
                         score = bm.iter().map(|line| line.iter().map(|&c| if c == -1 { 0 } else { c }).sum::<i32>()).sum::<i32>() * ball;
                     }
+
+                    done = true;
                 }
+            }
+            
+            if done {
+                break
             }
         }
     }

@@ -128,67 +128,57 @@ lazy_static! {
 
 fn main() {
     let dat = read_lines();
+    let balls: Vec::<i32> = dat[0].split(",").map(|b| b.parse::<i32>().unwrap()).collect();
 
-    let mut gamma = 0;
-    let mut epsilon = 0;
-
-    let mut oxy = HashSet::<String>::from_iter(dat.iter().cloned());
-    let mut co2 = HashSet::<String>::from_iter(dat.iter().cloned());
-
-    for dig in 0..dat[0].len() {
-        let mut ones = dat.iter().map(|x| x.chars().nth(dig).unwrap()).filter(|x| *x == '1').count();
-
-        gamma = gamma << 1;
-        epsilon = epsilon << 1;
-
-        if ones * 2 >= dat.len() {
-            gamma = gamma + 1;
-        } else {
-            epsilon = epsilon + 1;
+    let mut boards = Vec::<Vec::<Vec::<i32>>>::new();
+    for line in (2..dat.len()).step_by(6) {
+        let mut board = Vec::<Vec::<i32>>::new();
+        for y in 0..5 {
+            board.push(dat[line + y].split(" ").filter(|t| t.len() > 0).map(|b| b.parse::<i32>().unwrap()).collect());
         }
 
-        if oxy.len() > 1 {
-            let mut oxones = oxy.iter().map(|x| x.chars().nth(dig).unwrap()).filter(|x| *x == '1').count();
-            dbg!(oxones);
+        dbg!(&board);
+        boards.push(board);
+    }
 
-            if (oxones * 2 >= oxy.len())
-            {
-                oxy = HashSet::from_iter(oxy.iter().filter(|x| x.chars().nth(dig).unwrap() == '1').cloned());
-            }
-            else
-            {
-                oxy = HashSet::from_iter(oxy.iter().filter(|x| x.chars().nth(dig).unwrap() == '0').cloned());
-            }
+    let mut soonest = 1000;
+    let mut score = 0;
+    for board in boards.iter() {
+        let mut bm = board.clone();
 
-            dbg!(oxy.len());
-        }
-        if co2.len() > 1 {
-            let mut coones = co2.iter().map(|x| x.chars().nth(dig).unwrap()).filter(|x| *x == '1').count();
-            dbg!(coones);
-
-            if (coones * 2 >= co2.len())
-            {
-                co2 = HashSet::from_iter(co2.iter().filter(|x| x.chars().nth(dig).unwrap() == '0').cloned());
-            }
-            else
-            {
-                co2 = HashSet::from_iter(co2.iter().filter(|x| x.chars().nth(dig).unwrap() == '1').cloned());
+        for (idx, ball) in balls.iter().enumerate() {
+            for line in bm.iter_mut() {
+                for item in line.iter_mut() {
+                    if *item == *ball {
+                        *item = -1;
+                    }
+                }
             }
 
-            dbg!(co2.len());
+            for len in 0..5 {
+                let mut xwon = true;
+                let mut ywon = true;
+                for path in 0..5 {
+                    if bm[len][path] != -1 {
+                        xwon = false;
+                    }
+                    if bm[path][len] != -1 {
+                        ywon = false;
+                    }
+                }
+                
+                if xwon || ywon {
+                    if idx < soonest {
+                        dbg!("WIN");
+                        dbg!(&bm);
+
+                        soonest = idx;
+                        score = bm.iter().map(|line| line.iter().map(|&c| if c == -1 { 0 } else { c }).sum::<i32>()).sum::<i32>() * ball;
+                    }
+                }
+            }
         }
     }
-    
-    dbg!(gamma);
-    dbg!(epsilon);
 
-    dbg!(gamma * epsilon);
-
-    dbg!(&oxy);
-    dbg!(&co2);
-
-    dbg!(i32::from_str_radix(oxy.iter().next().unwrap(), 2));
-    dbg!(i32::from_str_radix(co2.iter().next().unwrap(), 2));
-
-    dbg!(i32::from_str_radix(oxy.iter().next().unwrap(), 2).unwrap() * i32::from_str_radix(co2.iter().next().unwrap(), 2).unwrap());
+    dbg!(score);
 }

@@ -162,6 +162,13 @@ fn main() {
             for x in cmp::min(line.sx, line.ex)..=cmp::max(line.sx, line.ex) {
                 state[x][line.sy] = state[x][line.sy] + 1;
             }
+        } else {
+            let dx = (line.ex as i32 - line.sx as i32).signum();
+            let dy = (line.ey as i32 - line.sy as i32).signum();
+            let ct = (line.sx as i32 - line.ex as i32).abs();
+            for c in 0..=ct {
+                state[(line.sx as i32 + dx * c) as usize][(line.sy as i32 + dy * c) as usize] = state[(line.sx as i32 + dx * c) as usize][(line.sy as i32 + dy * c) as usize] + 1;
+            }
         }
     }
 

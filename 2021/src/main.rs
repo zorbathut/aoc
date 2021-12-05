@@ -126,66 +126,46 @@ lazy_static! {
     static ref REGEX_TILE: regex::Regex = Regex::new(r"(e|w|ne|nw|se|sw)").unwrap();
 }
 
+#[derive(Debug)]
+struct Line
+{
+    sx: usize,
+    sy: usize,
+    ex: usize,
+    ey: usize,
+}
+
 fn main() {
-    let dat = read_lines();
-    let balls: Vec::<i32> = dat[0].split(",").map(|b| b.parse::<i32>().unwrap()).collect();
+    let re = Regex::new(r"(?P<sx>[0-9]+),(?P<sy>[0-9]+) \-> (?P<ex>[0-9]+),(?P<ey>[0-9]+)").unwrap();
 
-    let mut boards = Vec::<Vec::<Vec::<i32>>>::new();
-    for line in (2..dat.len()).step_by(6) {
-        let mut board = Vec::<Vec::<i32>>::new();
-        for y in 0..5 {
-            board.push(dat[line + y].split(" ").filter(|t| t.len() > 0).map(|b| b.parse::<i32>().unwrap()).collect());
-        }
+    let mut lines = Vec::new();
 
-        dbg!(&board);
-        boards.push(board);
+    for line in read_lines() {
+        println!("{:#?}", line);
+
+        let captures = re.captures(&line).unwrap();
+        lines.push(Line {
+            sx: captures.name("sx").unwrap().as_str().parse::<usize>().unwrap(),
+            ex: captures.name("ex").unwrap().as_str().parse::<usize>().unwrap(),
+            sy: captures.name("sy").unwrap().as_str().parse::<usize>().unwrap(),
+            ey: captures.name("ey").unwrap().as_str().parse::<usize>().unwrap(),
+        })
     }
 
-    let mut soonest = 0;
-    let mut score = 0;
-    for board in boards.iter() {
-        let mut bm = board.clone();
-
-        for (idx, ball) in balls.iter().enumerate() {
-            for line in bm.iter_mut() {
-                for item in line.iter_mut() {
-                    if *item == *ball {
-                        *item = -1;
-                    }
-                }
+    let mut state = vec![[0u16; 1000]; 1000];
+    for line in lines.iter() {
+        if line.sx == line.ex {
+            for y in cmp::min(line.sy, line.ey)..=cmp::max(line.sy, line.ey) {
+                state[line.sx][y] = state[line.sx][y] + 1;
             }
-
-            let mut done = false;
-            for len in 0..5 {
-                let mut xwon = true;
-                let mut ywon = true;
-                for path in 0..5 {
-                    if bm[len][path] != -1 {
-                        xwon = false;
-                    }
-                    if bm[path][len] != -1 {
-                        ywon = false;
-                    }
-                }
-                
-                if xwon || ywon {
-                    if idx > soonest {
-                        dbg!("WIN");
-                        dbg!(&bm);
-
-                        soonest = idx;
-                        score = bm.iter().map(|line| line.iter().map(|&c| if c == -1 { 0 } else { c }).sum::<i32>()).sum::<i32>() * ball;
-                    }
-
-                    done = true;
-                }
-            }
-            
-            if done {
-                break
+        } else if line.sy == line.ey {
+            for x in cmp::min(line.sx, line.ex)..=cmp::max(line.sx, line.ex) {
+                state[x][line.sy] = state[x][line.sy] + 1;
             }
         }
     }
 
-    dbg!(score);
+    //dbg!(&state);
+
+    dbg!(state.iter().map(|l| l.iter().filter(|c| **c >= 2).count()).sum::<usize>());
 }

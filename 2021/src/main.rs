@@ -136,43 +136,24 @@ struct Line
 }
 
 fn main() {
-    let re = Regex::new(r"(?P<sx>[0-9]+),(?P<sy>[0-9]+) \-> (?P<ex>[0-9]+),(?P<ey>[0-9]+)").unwrap();
+    let mut fish = read_lines()[0].split(",").map(|x| x.parse::<usize>().unwrap()).collect::<Vec<usize>>();
 
-    let mut lines = Vec::new();
-
-    for line in read_lines() {
-        println!("{:#?}", line);
-
-        let captures = re.captures(&line).unwrap();
-        lines.push(Line {
-            sx: captures.name("sx").unwrap().as_str().parse::<usize>().unwrap(),
-            ex: captures.name("ex").unwrap().as_str().parse::<usize>().unwrap(),
-            sy: captures.name("sy").unwrap().as_str().parse::<usize>().unwrap(),
-            ey: captures.name("ey").unwrap().as_str().parse::<usize>().unwrap(),
-        })
+    let mut fishstate = [0u64; 9];
+    for &fis in fish.iter() {
+        fishstate[fis] = fishstate[fis] + 1;
     }
 
-    let mut state = vec![[0u16; 1000]; 1000];
-    for line in lines.iter() {
-        if line.sx == line.ex {
-            for y in cmp::min(line.sy, line.ey)..=cmp::max(line.sy, line.ey) {
-                state[line.sx][y] = state[line.sx][y] + 1;
-            }
-        } else if line.sy == line.ey {
-            for x in cmp::min(line.sx, line.ex)..=cmp::max(line.sx, line.ex) {
-                state[x][line.sy] = state[x][line.sy] + 1;
-            }
-        } else {
-            let dx = (line.ex as i32 - line.sx as i32).signum();
-            let dy = (line.ey as i32 - line.sy as i32).signum();
-            let ct = (line.sx as i32 - line.ex as i32).abs();
-            for c in 0..=ct {
-                state[(line.sx as i32 + dx * c) as usize][(line.sy as i32 + dy * c) as usize] = state[(line.sx as i32 + dx * c) as usize][(line.sy as i32 + dy * c) as usize] + 1;
-            }
+    for ticks in 0..256 {
+        let mut newf = [0u64; 9];
+        for old in 0..8 {
+            newf[old] = fishstate[old + 1];
         }
+        
+        newf[6] = newf[6] + fishstate[0];
+        newf[8] = newf[8] + fishstate[0];
+
+        fishstate = newf;
     }
 
-    //dbg!(&state);
-
-    dbg!(state.iter().map(|l| l.iter().filter(|c| **c >= 2).count()).sum::<usize>());
+    dbg!(fishstate.iter().sum::<u64>());
 }

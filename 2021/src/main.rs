@@ -136,24 +136,22 @@ struct Line
 }
 
 fn main() {
-    let mut fish = read_lines()[0].split(",").map(|x| x.parse::<usize>().unwrap()).collect::<Vec<usize>>();
+    let mut crabs = read_lines()[0].split(",").map(|x| x.parse::<i32>().unwrap()).collect::<Vec<i32>>();
 
-    let mut fishstate = [0u64; 9];
-    for &fis in fish.iter() {
-        fishstate[fis] = fishstate[fis] + 1;
-    }
-
-    for ticks in 0..256 {
-        let mut newf = [0u64; 9];
-        for old in 0..8 {
-            newf[old] = fishstate[old + 1];
+    let mut bestpos = 0;
+    let mut bestposcost = 100000000;
+    for pos in 0..2000 {
+        let mut cost = 0;
+        for crab in &crabs {
+            cost += (crab - pos).abs() * ((crab - pos).abs() + 1) / 2;
         }
-        
-        newf[6] = newf[6] + fishstate[0];
-        newf[8] = newf[8] + fishstate[0];
 
-        fishstate = newf;
+        if cost < bestposcost {
+            bestposcost = cost;
+            bestpos = pos;
+        }
     }
-
-    dbg!(fishstate.iter().sum::<u64>());
+    
+    dbg!(bestpos);
+    dbg!(bestposcost);
 }

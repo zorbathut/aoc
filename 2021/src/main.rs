@@ -137,38 +137,43 @@ struct Line
 
 fn tweak(permutation: &Vec<u8>, val: &Vec<u8>) -> Vec<u8>
 {
-    val.iter().map(|&c| permutation[c as usize]).collect()
+    val.iter().map(|&c| permutation[c as usize]).sorted().collect()
 }
 
 fn main() {
     let digis = &["abcefg", "cf", "acdeg", "acdfg", "bcdf", "abdfg", "abdefg", "acf", "abcdefg", "abcdfg"].iter().map(|x| x.as_bytes().iter().map(|b| b - ('a' as u8)).collect()).collect::<Vec<Vec<u8>>>();
+    //dbg!(digis);
 
-    let mut ct = 0;
+    let mut acu = 0;
     for line in read_lines() {
-        let refs: Vec<Vec<u8>> = line.split('|').nth(0).unwrap().split(' ').map(|s| s.as_bytes().iter().map(|b| b - ('a' as u8)).collect()).collect();
-        let keys: Vec<Vec<u8>> = line.split('|').nth(1).unwrap().split(' ').map(|s| s.as_bytes().iter().map(|b| b - ('a' as u8)).collect()).collect();
+        let refs: Vec<Vec<u8>> = line.split('|').nth(0).unwrap().trim().split(' ').map(|s| s.as_bytes().iter().map(|b| b - ('a' as u8)).collect()).collect();
+        let keys: Vec<Vec<u8>> = line.split('|').nth(1).unwrap().trim().split(' ').map(|s| s.as_bytes().iter().map(|b| b - ('a' as u8)).collect()).collect();
 
-        for key in keys {
-            if key.len() == 2 || key.len() == 3 || key.len() == 4 || key.len() == 7 {
-                ct += 1;
-            }
-        }
+        //let perm = vec![2u8, 5u8, 6u8, 0u8, 1u8, 3u8, 4u8];
 
-        /*for perm in (0..7).permutations(7) {
+        for perm in (0..7).permutations(7) {
             let mut working = true;
             for it in &refs {
                 if !digis.contains(&tweak(&perm, &it)) {
+                    //dbg!(it, tweak(&perm, &it));
                     working = false;
                     break;
                 }
             }
 
             if working {
-                dbg!(perm);
+                dbg!(&perm);
+                let mut tacu = 0;
+                for it in keys {
+                    let mat = tweak(&perm, &it);
+                    tacu *= 10;
+                    tacu += digis.iter().position(|r| *r == mat).unwrap();
+                }
+                acu += tacu;
                 break;
             }
-        }*/
+        }
     }
 
-    dbg!(ct);
+    dbg!(acu);
 }

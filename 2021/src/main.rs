@@ -135,23 +135,40 @@ struct Line
     ey: usize,
 }
 
+fn tweak(permutation: &Vec<u8>, val: &Vec<u8>) -> Vec<u8>
+{
+    val.iter().map(|&c| permutation[c as usize]).collect()
+}
+
 fn main() {
-    let mut crabs = read_lines()[0].split(",").map(|x| x.parse::<i32>().unwrap()).collect::<Vec<i32>>();
+    let digis = &["abcefg", "cf", "acdeg", "acdfg", "bcdf", "abdfg", "abdefg", "acf", "abcdefg", "abcdfg"].iter().map(|x| x.as_bytes().iter().map(|b| b - ('a' as u8)).collect()).collect::<Vec<Vec<u8>>>();
 
-    let mut bestpos = 0;
-    let mut bestposcost = 100000000;
-    for pos in 0..2000 {
-        let mut cost = 0;
-        for crab in &crabs {
-            cost += (crab - pos).abs() * ((crab - pos).abs() + 1) / 2;
+    let mut ct = 0;
+    for line in read_lines() {
+        let refs: Vec<Vec<u8>> = line.split('|').nth(0).unwrap().split(' ').map(|s| s.as_bytes().iter().map(|b| b - ('a' as u8)).collect()).collect();
+        let keys: Vec<Vec<u8>> = line.split('|').nth(1).unwrap().split(' ').map(|s| s.as_bytes().iter().map(|b| b - ('a' as u8)).collect()).collect();
+
+        for key in keys {
+            if key.len() == 2 || key.len() == 3 || key.len() == 4 || key.len() == 7 {
+                ct += 1;
+            }
         }
 
-        if cost < bestposcost {
-            bestposcost = cost;
-            bestpos = pos;
-        }
+        /*for perm in (0..7).permutations(7) {
+            let mut working = true;
+            for it in &refs {
+                if !digis.contains(&tweak(&perm, &it)) {
+                    working = false;
+                    break;
+                }
+            }
+
+            if working {
+                dbg!(perm);
+                break;
+            }
+        }*/
     }
-    
-    dbg!(bestpos);
-    dbg!(bestposcost);
+
+    dbg!(ct);
 }

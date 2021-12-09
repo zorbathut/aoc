@@ -141,36 +141,34 @@ fn tweak(permutation: &Vec<u8>, val: &Vec<u8>) -> Vec<u8>
 }
 
 fn main() {
-    let digis = &["abcefg", "cf", "acdeg", "acdfg", "bcdf", "abdfg", "abdefg", "acf", "abcdefg", "abcdfg"].iter().map(|x| x.as_bytes().iter().map(|b| b - ('a' as u8)).collect()).collect::<Vec<Vec<u8>>>();
-    //dbg!(digis);
+    let lopo = read_lines().iter().map(|l| l.as_bytes().iter().map(|b| (*b as i8) - ('0' as i8)).collect()).collect::<Vec<Vec<i8>>>();
+    
+    let mx = lopo.len() as i32;
+    let my = lopo[0].len() as i32;
 
-    let mut acu = 0;
-    for line in read_lines() {
-        let refs: Vec<Vec<u8>> = line.split('|').nth(0).unwrap().trim().split(' ').map(|s| s.as_bytes().iter().map(|b| b - ('a' as u8)).collect()).collect();
-        let keys: Vec<Vec<u8>> = line.split('|').nth(1).unwrap().trim().split(' ').map(|s| s.as_bytes().iter().map(|b| b - ('a' as u8)).collect()).collect();
+    let dx = vec![0, 0, 1, -1];
+    let dy = vec![1, -1, 0, 0];
 
-        //let perm = vec![2u8, 5u8, 6u8, 0u8, 1u8, 3u8, 4u8];
+    let mut acu = 0i32;
 
-        for perm in (0..7).permutations(7) {
-            let mut working = true;
-            for it in &refs {
-                if !digis.contains(&tweak(&perm, &it)) {
-                    //dbg!(it, tweak(&perm, &it));
-                    working = false;
+    for x in 0..mx {
+        for y in 0..my {
+            let mut okay = true;
+            for k in 0..4 {
+                let tx = x + dx[k];
+                let ty = y + dy[k];
+                if tx < 0 || tx >= mx || ty < 0 || ty >= my {
+                    continue;
+                }
+
+                if lopo[tx as usize][ty as usize] <= lopo[x as usize][y as usize] {
+                    okay = false;
                     break;
                 }
             }
 
-            if working {
-                dbg!(&perm);
-                let mut tacu = 0;
-                for it in keys {
-                    let mat = tweak(&perm, &it);
-                    tacu *= 10;
-                    tacu += digis.iter().position(|r| *r == mat).unwrap();
-                }
-                acu += tacu;
-                break;
+            if okay {
+                acu += lopo[x as usize][y as usize] as i32 + 1;
             }
         }
     }

@@ -141,7 +141,7 @@ fn tweak(permutation: &Vec<u8>, val: &Vec<u8>) -> Vec<u8>
 }
 
 fn main() {
-    let lopo = read_lines().iter().map(|l| l.as_bytes().iter().map(|b| (*b as i8) - ('0' as i8)).collect()).collect::<Vec<Vec<i8>>>();
+    let mut lopo = read_lines().iter().map(|l| l.as_bytes().iter().map(|b| (*b as i8) - ('0' as i8)).collect()).collect::<Vec<Vec<i8>>>();
     
     let mx = lopo.len() as i32;
     let my = lopo[0].len() as i32;
@@ -151,27 +151,41 @@ fn main() {
 
     let mut acu = 0i32;
 
+    let mut basins = Vec::new();
+
     for x in 0..mx {
         for y in 0..my {
-            let mut okay = true;
-            for k in 0..4 {
-                let tx = x + dx[k];
-                let ty = y + dy[k];
-                if tx < 0 || tx >= mx || ty < 0 || ty >= my {
+            if lopo[x as usize][y as usize] == 9 {
+                continue;
+            }
+
+            let mut size = 0;
+            let mut points = Vec::new();
+            points.push((x, y));
+
+            while points.len() > 0 {
+                let pt = points.pop().unwrap();
+                if pt.0 < 0 || pt.0 >= mx || pt.1 < 0 || pt.1 >= my {
+                    continue;
+                }
+                if lopo[pt.0 as usize][pt.1 as usize] == 9 {
                     continue;
                 }
 
-                if lopo[tx as usize][ty as usize] <= lopo[x as usize][y as usize] {
-                    okay = false;
-                    break;
+                lopo[pt.0 as usize][pt.1 as usize] = 9;
+                size += 1;
+
+                for k in 0..4 {
+                    points.push((pt.0 + dx[k], pt.1 + dy[k]));
                 }
             }
 
-            if okay {
-                acu += lopo[x as usize][y as usize] as i32 + 1;
-            }
+            basins.push(size);
         }
     }
 
-    dbg!(acu);
+    basins.sort();
+    dbg!(&basins);
+
+    dbg!(basins.pop().unwrap() * basins.pop().unwrap() * basins.pop().unwrap());
 }

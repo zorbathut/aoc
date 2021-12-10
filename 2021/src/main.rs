@@ -141,51 +141,31 @@ fn tweak(permutation: &Vec<u8>, val: &Vec<u8>) -> Vec<u8>
 }
 
 fn main() {
-    let mut lopo = read_lines().iter().map(|l| l.as_bytes().iter().map(|b| (*b as i8) - ('0' as i8)).collect()).collect::<Vec<Vec<i8>>>();
-    
-    let mx = lopo.len() as i32;
-    let my = lopo[0].len() as i32;
+    let mut acu = 0;
 
-    let dx = vec![0, 0, 1, -1];
-    let dy = vec![1, -1, 0, 0];
+    let mut opens = vec!['(', '[', '{', '<'];
+    let mut closes = vec![')', ']', '}', '>'];
 
-    let mut acu = 0i32;
+    for line in read_lines().iter() {
+        let mut stack = vec![];
 
-    let mut basins = Vec::new();
-
-    for x in 0..mx {
-        for y in 0..my {
-            if lopo[x as usize][y as usize] == 9 {
-                continue;
+        for kar in line.chars() {
+            match opens.iter().position(|c| *c == kar) {
+                Some(k) => stack.push(closes[k]),
+                None => if stack.len() == 0 || kar != stack.pop().unwrap() {
+                    dbg!(line, kar);
+                    acu += match kar {
+                        ')' => 3,
+                        ']' => 57,
+                        '}' => 1197,
+                        '>' => 25137,
+                        _ => 0,
+                    };
+                    break;
+                },
             }
-
-            let mut size = 0;
-            let mut points = Vec::new();
-            points.push((x, y));
-
-            while points.len() > 0 {
-                let pt = points.pop().unwrap();
-                if pt.0 < 0 || pt.0 >= mx || pt.1 < 0 || pt.1 >= my {
-                    continue;
-                }
-                if lopo[pt.0 as usize][pt.1 as usize] == 9 {
-                    continue;
-                }
-
-                lopo[pt.0 as usize][pt.1 as usize] = 9;
-                size += 1;
-
-                for k in 0..4 {
-                    points.push((pt.0 + dx[k], pt.1 + dy[k]));
-                }
-            }
-
-            basins.push(size);
         }
     }
-
-    basins.sort();
-    dbg!(&basins);
-
-    dbg!(basins.pop().unwrap() * basins.pop().unwrap() * basins.pop().unwrap());
+    
+    dbg!(acu);
 }

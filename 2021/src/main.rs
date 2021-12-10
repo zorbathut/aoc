@@ -141,31 +141,42 @@ fn tweak(permutation: &Vec<u8>, val: &Vec<u8>) -> Vec<u8>
 }
 
 fn main() {
-    let mut acu = 0;
+    let mut skor = vec![];
 
     let mut opens = vec!['(', '[', '{', '<'];
     let mut closes = vec![')', ']', '}', '>'];
 
     for line in read_lines().iter() {
         let mut stack = vec![];
+        let mut valid = true;
 
         for kar in line.chars() {
             match opens.iter().position(|c| *c == kar) {
                 Some(k) => stack.push(closes[k]),
                 None => if stack.len() == 0 || kar != stack.pop().unwrap() {
-                    dbg!(line, kar);
-                    acu += match kar {
-                        ')' => 3,
-                        ']' => 57,
-                        '}' => 1197,
-                        '>' => 25137,
-                        _ => 0,
-                    };
+                    valid = false;
                     break;
                 },
             }
         }
+
+        if valid {
+            let mut acu: i64 = 0;
+            for kor in stack.iter().rev() {
+                acu *= 5;
+                acu += match kor {
+                    ')' => 1,
+                    ']' => 2,
+                    '}' => 3,
+                    '>' => 4,
+                    _ => 0,
+                };
+            }
+            skor.push(acu);
+        }
     }
+
+    skor.sort();
     
-    dbg!(acu);
+    dbg!(skor[skor.len() / 2]);
 }

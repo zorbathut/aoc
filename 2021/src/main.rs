@@ -135,48 +135,72 @@ struct Line
     ey: usize,
 }
 
-fn tweak(permutation: &Vec<u8>, val: &Vec<u8>) -> Vec<u8>
-{
-    val.iter().map(|&c| permutation[c as usize]).sorted().collect()
-}
-
 fn main() {
-    let mut skor = vec![];
+    let mut octomap: Vec::<Vec<i8>> = vec![];
 
-    let mut opens = vec!['(', '[', '{', '<'];
-    let mut closes = vec![')', ']', '}', '>'];
+    let dx: Vec::<i8> = vec![-1, -1, -1, 0, 0, 1, 1, 1];
+    let dy: Vec::<i8> = vec![-1, 0, 1, -1, 1, -1, 0, 1];
 
     for line in read_lines().iter() {
-        let mut stack = vec![];
-        let mut valid = true;
-
-        for kar in line.chars() {
-            match opens.iter().position(|c| *c == kar) {
-                Some(k) => stack.push(closes[k]),
-                None => if stack.len() == 0 || kar != stack.pop().unwrap() {
-                    valid = false;
-                    break;
-                },
-            }
+        let mut lin: Vec::<i8> = vec![];
+        for list in line.chars() {
+            lin.push((list as i32 - '0' as i32) as i8);
         }
-
-        if valid {
-            let mut acu: i64 = 0;
-            for kor in stack.iter().rev() {
-                acu *= 5;
-                acu += match kor {
-                    ')' => 1,
-                    ']' => 2,
-                    '}' => 3,
-                    '>' => 4,
-                    _ => 0,
-                };
-            }
-            skor.push(acu);
-        }
+        octomap.push(lin);
     }
 
-    skor.sort();
     
-    dbg!(skor[skor.len() / 2]);
+    for i in 0..100000 {
+        dbg!(i);
+
+        let mut flash = 0;
+
+        for x in 0..10 {
+            for y in 0..10 {
+                octomap[x][y] += 1;
+            }
+        }
+
+        let mut exhausted = [[false; 10]; 10];
+
+        loop {
+            let mut done = true;
+            
+            for x in 0..10 {
+                for y in 0..10 {
+                    if octomap[x][y] >= 10 && !exhausted[x][y] {
+                        done = false;
+                        exhausted[x][y] = true;
+                        flash += 1;
+                        for d in 0..8 {
+                            let tx = (x as i8) + dx[d];
+                            let ty = (y as i8) + dy[d];
+                            if tx < 0 || tx >= 10 || ty < 0 || ty >= 10 {
+                                continue
+                            }
+
+                            octomap[tx as usize][ty as usize] += 1;
+                        }
+                    }
+                }
+            }
+
+            if done {
+                break;
+            }
+        }
+
+        for x in 0..10 {
+            for y in 0..10 {
+                if octomap[x][y] >= 10 {
+                    octomap[x][y] = 0;
+                }
+            }
+        }
+
+        if flash == 100 {
+            dbg!(i);
+            break;
+        }
+    }
 }

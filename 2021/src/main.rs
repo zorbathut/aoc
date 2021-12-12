@@ -135,72 +135,38 @@ struct Line
     ey: usize,
 }
 
+fn recur(links: &HashMap<String, Vec<String>>, node: String, seen: &mut HashSet<String>, path: String) -> i32 {
+    if node == "end" {
+        dbg!(path);
+        return 1;
+    }
+
+    let mut acu = 0;
+    for link in links[&node].iter() {
+        if link.chars().nth(0).unwrap().is_ascii_lowercase() && seen.contains(link) {
+            continue;
+        }
+
+        seen.insert(link.clone());
+
+        acu += recur(links, link.to_string(), seen, format!("{},{}", path, link));
+
+        seen.remove(link);
+    }
+
+    acu
+}
+
 fn main() {
-    let mut octomap: Vec::<Vec<i8>> = vec![];
+    let mut octomap: HashMap::<String, Vec<String>> = HashMap::new();
 
-    let dx: Vec::<i8> = vec![-1, -1, -1, 0, 0, 1, 1, 1];
-    let dy: Vec::<i8> = vec![-1, 0, 1, -1, 1, -1, 0, 1];
-
-    for line in read_lines().iter() {
-        let mut lin: Vec::<i8> = vec![];
-        for list in line.chars() {
-            lin.push((list as i32 - '0' as i32) as i8);
-        }
-        octomap.push(lin);
+    for line in read_lines() {
+        let mut split = line.split('-').collect::<Vec<&str>>();
+        octomap.entry(split[0].to_string()).or_insert(Vec::new()).push(split[1].to_string());
+        octomap.entry(split[1].to_string()).or_insert(Vec::new()).push(split[0].to_string());
     }
 
-    
-    for i in 0..100000 {
-        dbg!(i);
-
-        let mut flash = 0;
-
-        for x in 0..10 {
-            for y in 0..10 {
-                octomap[x][y] += 1;
-            }
-        }
-
-        let mut exhausted = [[false; 10]; 10];
-
-        loop {
-            let mut done = true;
-            
-            for x in 0..10 {
-                for y in 0..10 {
-                    if octomap[x][y] >= 10 && !exhausted[x][y] {
-                        done = false;
-                        exhausted[x][y] = true;
-                        flash += 1;
-                        for d in 0..8 {
-                            let tx = (x as i8) + dx[d];
-                            let ty = (y as i8) + dy[d];
-                            if tx < 0 || tx >= 10 || ty < 0 || ty >= 10 {
-                                continue
-                            }
-
-                            octomap[tx as usize][ty as usize] += 1;
-                        }
-                    }
-                }
-            }
-
-            if done {
-                break;
-            }
-        }
-
-        for x in 0..10 {
-            for y in 0..10 {
-                if octomap[x][y] >= 10 {
-                    octomap[x][y] = 0;
-                }
-            }
-        }
-
-        if flash == 100 {
-            dbg!(i);
-            break;
-        }
-    }
+    let mut seen = HashSet::new();
+    seen.insert("start".to_string());
+    dbg!(recur(&octomap, "start".to_string(), &mut seen, "start".to_string()));
 }

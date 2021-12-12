@@ -10,6 +10,7 @@ use std::collections::hash_map::Entry;
 use std::iter::FromIterator;
 use num::integer;
 use itertools::Itertools;
+use multiset::HashMultiSet;
 
 #[macro_use] extern crate lazy_static;
 #[macro_use] extern crate scan_fmt;
@@ -135,21 +136,26 @@ struct Line
     ey: usize,
 }
 
-fn recur(links: &HashMap<String, Vec<String>>, node: String, seen: &mut HashSet<String>, path: String) -> i32 {
+fn recur(links: &HashMap<String, Vec<String>>, node: String, seen: &mut HashMultiSet<String>, path: String, twiced: bool) -> i32 {
     if node == "end" {
-        dbg!(path);
+        //dbg!(path);
         return 1;
     }
 
     let mut acu = 0;
     for link in links[&node].iter() {
+        let mut ltwiced = twiced;
         if link.chars().nth(0).unwrap().is_ascii_lowercase() && seen.contains(link) {
-            continue;
+            if ltwiced || link == "start" {
+                continue;
+            }
+            
+            ltwiced = true;
         }
 
         seen.insert(link.clone());
 
-        acu += recur(links, link.to_string(), seen, format!("{},{}", path, link));
+        acu += recur(links, link.to_string(), seen, format!("{},{}", path, link), ltwiced);
 
         seen.remove(link);
     }
@@ -166,7 +172,7 @@ fn main() {
         octomap.entry(split[1].to_string()).or_insert(Vec::new()).push(split[0].to_string());
     }
 
-    let mut seen = HashSet::new();
+    let mut seen = HashMultiSet::new();
     seen.insert("start".to_string());
-    dbg!(recur(&octomap, "start".to_string(), &mut seen, "start".to_string()));
+    dbg!(recur(&octomap, "start".to_string(), &mut seen, "start".to_string(), false));
 }

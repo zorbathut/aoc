@@ -136,43 +136,42 @@ struct Line
     ey: usize,
 }
 
-fn recur(links: &HashMap<String, Vec<String>>, node: String, seen: &mut HashMultiSet<String>, path: String, twiced: bool) -> i32 {
-    if node == "end" {
-        //dbg!(path);
-        return 1;
-    }
-
-    let mut acu = 0;
-    for link in links[&node].iter() {
-        let mut ltwiced = twiced;
-        if link.chars().nth(0).unwrap().is_ascii_lowercase() && seen.contains(link) {
-            if ltwiced || link == "start" {
-                continue;
-            }
-            
-            ltwiced = true;
-        }
-
-        seen.insert(link.clone());
-
-        acu += recur(links, link.to_string(), seen, format!("{},{}", path, link), ltwiced);
-
-        seen.remove(link);
-    }
-
-    acu
-}
-
 fn main() {
-    let mut octomap: HashMap::<String, Vec<String>> = HashMap::new();
+    let mut pts = vec![];
 
     for line in read_lines() {
-        let mut split = line.split('-').collect::<Vec<&str>>();
-        octomap.entry(split[0].to_string()).or_insert(Vec::new()).push(split[1].to_string());
-        octomap.entry(split[1].to_string()).or_insert(Vec::new()).push(split[0].to_string());
+        if let Ok((a,b)) = scan_fmt!(&line, "{},{}", i32, i32) {
+            pts.push((a, b));
+        } else if let Ok((a,b)) = scan_fmt!(&line, "fold along {}={}", char, i32) {
+            if a == 'x' {
+                for pt in pts.iter_mut() {
+                    if pt.0 > b {
+                        pt.0 = b + b - pt.0;
+                    }
+                }
+            } else {
+                for pt in pts.iter_mut() {
+                    if pt.1 > b {
+                        pt.1 = b + b - pt.1;
+                    }
+                }
+            }
+
+            pts.sort();
+            pts.dedup();
+
+            dbg!(pts.len());
+        }
     }
 
-    let mut seen = HashMultiSet::new();
-    seen.insert("start".to_string());
-    dbg!(recur(&octomap, "start".to_string(), &mut seen, "start".to_string(), false));
+    dbg!(&pts);
+
+    let mut map = [[' '; 40]; 6];
+    for pt in pts {
+        map[pt.1 as usize][pt.0 as usize] = '#';
+    }
+
+    for lin in map {
+        println!("{}", lin.iter().collect::<String>());
+    }
 }

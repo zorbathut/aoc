@@ -137,41 +137,39 @@ struct Line
 }
 
 fn main() {
-    let mut pts = vec![];
+    let lines = read_lines();
 
-    for line in read_lines() {
-        if let Ok((a,b)) = scan_fmt!(&line, "{},{}", i32, i32) {
-            pts.push((a, b));
-        } else if let Ok((a,b)) = scan_fmt!(&line, "fold along {}={}", char, i32) {
-            if a == 'x' {
-                for pt in pts.iter_mut() {
-                    if pt.0 > b {
-                        pt.0 = b + b - pt.0;
-                    }
-                }
-            } else {
-                for pt in pts.iter_mut() {
-                    if pt.1 > b {
-                        pt.1 = b + b - pt.1;
-                    }
-                }
-            }
+    let mut rules: HashMap<String, String> = HashMap::new();
 
-            pts.sort();
-            pts.dedup();
-
-            dbg!(pts.len());
+    for line in lines.iter().skip(1) {
+        if let Ok((a,b)) = scan_fmt!(&line, "{} -> {}", String, String) {
+            rules.insert(a, b);
         }
     }
+    
+    let mut poly = lines[0].clone();
+    dbg!(&poly);
+    for q in 0..10 {
+        let mut acu = String::new();
 
-    dbg!(&pts);
+        for i in 0..(poly.len() - 1) {
+            acu.push(poly.bytes().nth(i).unwrap() as char);
+            acu += &rules[&format!("{}{}", poly.bytes().nth(i).unwrap() as char, poly.bytes().nth(i + 1).unwrap() as char)];
+        }
 
-    let mut map = [[' '; 40]; 6];
-    for pt in pts {
-        map[pt.1 as usize][pt.0 as usize] = '#';
+        acu.push(poly.bytes().nth(poly.len() - 1).unwrap() as char);
+
+        dbg!(&acu);
+        poly = acu;
     }
 
-    for lin in map {
-        println!("{}", lin.iter().collect::<String>());
+    let mut count = HashMap::new();
+    for c in poly.chars() {
+        *count.entry(c).or_insert(0) += 1;
     }
+
+    dbg!(count.values().min());
+    dbg!(count.values().max());
+
+    dbg!(count.values().max().unwrap() - count.values().min().unwrap());
 }

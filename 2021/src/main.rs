@@ -139,37 +139,48 @@ struct Line
 fn main() {
     let lines = read_lines();
 
-    let mut rules: HashMap<String, String> = HashMap::new();
+    let mut rules: HashMap<[char; 2], char> = HashMap::new();
 
     for line in lines.iter().skip(1) {
-        if let Ok((a,b)) = scan_fmt!(&line, "{} -> {}", String, String) {
-            rules.insert(a, b);
+        dbg!(line);
+        if let Ok((a, b)) = scan_fmt!(&line, "{} -> {}", String, char) {
+            rules.insert([a.chars().nth(0).unwrap(), a.chars().nth(1).unwrap()], b);
         }
     }
     
-    let mut poly = lines[0].clone();
-    dbg!(&poly);
-    for q in 0..10 {
-        let mut acu = String::new();
+    let mut pory: HashMap<[char; 2], i64> = HashMap::new();
 
-        for i in 0..(poly.len() - 1) {
-            acu.push(poly.bytes().nth(i).unwrap() as char);
-            acu += &rules[&format!("{}{}", poly.bytes().nth(i).unwrap() as char, poly.bytes().nth(i + 1).unwrap() as char)];
+    let poly = &lines[0];
+    for i in 0..(poly.len() - 1) {
+        *pory.entry([poly.chars().nth(i).unwrap(), poly.chars().nth(i + 1).unwrap()]).or_insert(0) += 1;
+    }
+
+    dbg!(&rules);
+    dbg!(&pory);
+    
+    for q in 0..40 {
+        let mut nexto = HashMap::new();
+
+        for item in pory {
+            *nexto.entry([item.0[0], rules[&item.0]]).or_insert(0) += item.1;
+            *nexto.entry([rules[&item.0], item.0[1]]).or_insert(0) += item.1;
         }
 
-        acu.push(poly.bytes().nth(poly.len() - 1).unwrap() as char);
-
-        dbg!(&acu);
-        poly = acu;
+        dbg!(&nexto);
+        pory = nexto;
     }
 
-    let mut count = HashMap::new();
-    for c in poly.chars() {
-        *count.entry(c).or_insert(0) += 1;
+    let mut count: HashMap<char, i64> = HashMap::new();
+    for c in pory.iter() {
+        *count.entry(c.0[0]).or_insert(0) += c.1;
+        *count.entry(c.0[1]).or_insert(0) += c.1;
     }
 
-    dbg!(count.values().min());
-    dbg!(count.values().max());
+    *count.entry(poly.chars().nth(0).unwrap()).or_insert(0) += 1;
+    *count.entry(poly.chars().nth(poly.len() - 1).unwrap()).or_insert(0) += 1;
 
-    dbg!(count.values().max().unwrap() - count.values().min().unwrap());
+    dbg!(count.values().min().unwrap() / 2);
+    dbg!(count.values().max().unwrap() / 2);
+
+    dbg!((count.values().max().unwrap() - count.values().min().unwrap()) / 2);
 }

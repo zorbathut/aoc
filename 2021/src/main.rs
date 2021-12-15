@@ -136,9 +136,7 @@ fn main() {
         for lin in olines.iter() {
             let mut nlin = Vec::new();
             for b in 0..5 {
-                for k in lin.iter().map(|v| (v - 1 + a + b) % 9 + 1) {
-                    nlin.push(k);
-                }
+                nlin.extend(lin.iter().map(|v| (v - 1 + a + b) % 9 + 1));
             }
             lines.push(nlin);
         }

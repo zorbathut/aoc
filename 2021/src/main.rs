@@ -129,7 +129,20 @@ lazy_static! {
 }
 
 fn main() {
-    let mut lines = read_lines().iter().map(|l| l.chars().map(|c| (c as i32 - '0' as i32) as u32).collect::<Vec<u32>>()).collect::<Vec<Vec<u32>>>();
+    let mut olines = read_lines().iter().map(|l| l.chars().map(|c| (c as i32 - '0' as i32) as u32).collect::<Vec<u32>>()).collect::<Vec<Vec<u32>>>();
+
+    let mut lines: Vec<Vec<u32>> = Vec::new();
+    for a in 0..5 {
+        for lin in olines.iter() {
+            let mut nlin = Vec::new();
+            for b in 0..5 {
+                for k in lin.iter().map(|v| (v - 1 + a + b) % 9 + 1) {
+                    nlin.push(k);
+                }
+            }
+            lines.push(nlin);
+        }
+    }
 
     let mut pos: BinaryHeap<(i32, i32, i32)> = BinaryHeap::new();
     pos.push((0, 0, 0));

@@ -6,6 +6,7 @@ use std::fmt;
 use regex::Regex;
 use std::collections::HashSet;
 use std::collections::HashMap;
+use std::collections::BinaryHeap;
 use std::collections::hash_map::Entry;
 use std::iter::FromIterator;
 use num::integer;
@@ -127,60 +128,41 @@ lazy_static! {
     static ref REGEX_TILE: regex::Regex = Regex::new(r"(e|w|ne|nw|se|sw)").unwrap();
 }
 
-#[derive(Debug)]
-struct Line
-{
-    sx: usize,
-    sy: usize,
-    ex: usize,
-    ey: usize,
-}
-
 fn main() {
-    let lines = read_lines();
+    let mut lines = read_lines().iter().map(|l| l.chars().map(|c| (c as i32 - '0' as i32) as u32).collect::<Vec<u32>>()).collect::<Vec<Vec<u32>>>();
 
-    let mut rules: HashMap<[char; 2], char> = HashMap::new();
+    let mut pos: BinaryHeap<(i32, i32, i32)> = BinaryHeap::new();
+    pos.push((0, 0, 0));
 
-    for line in lines.iter().skip(1) {
-        dbg!(line);
-        if let Ok((a, b)) = scan_fmt!(&line, "{} -> {}", String, char) {
-            rules.insert([a.chars().nth(0).unwrap(), a.chars().nth(1).unwrap()], b);
-        }
-    }
+    let dx = vec![0, 0, 1, -1];
+    let dy = vec![1, -1, 0, 0];
     
-    let mut pory: HashMap<[char; 2], i64> = HashMap::new();
+    loop {
+        let nx = pos.pop().unwrap();
 
-    let poly = &lines[0];
-    for i in 0..(poly.len() - 1) {
-        *pory.entry([poly.chars().nth(i).unwrap(), poly.chars().nth(i + 1).unwrap()]).or_insert(0) += 1;
-    }
+        //dbg!(&nx);
 
-    dbg!(&rules);
-    dbg!(&pory);
-    
-    for q in 0..40 {
-        let mut nexto = HashMap::new();
-
-        for item in pory {
-            *nexto.entry([item.0[0], rules[&item.0]]).or_insert(0) += item.1;
-            *nexto.entry([rules[&item.0], item.0[1]]).or_insert(0) += item.1;
+        if nx.1 + 1 == lines.len() as i32 && nx.2 + 1 == lines[0].len() as i32 {
+            dbg!(nx.0);
+            break;
         }
 
-        dbg!(&nexto);
-        pory = nexto;
+        for t in 0..4 {
+            let tx = nx.1 + dx[t];
+            let ty = nx.2 + dy[t];
+
+            if tx < 0 || ty < 0 || tx >= lines.len() as i32 || ty >= lines[0].len() as i32 {
+                continue;
+            }
+
+            if lines[tx as usize][ty as usize] >= 100 {
+                continue;
+            }
+
+            let tc = nx.0 - lines[tx as usize][ty as usize] as i32;
+            lines[tx as usize][ty as usize] = 100;
+
+            pos.push((tc, tx, ty));
+        }
     }
-
-    let mut count: HashMap<char, i64> = HashMap::new();
-    for c in pory.iter() {
-        *count.entry(c.0[0]).or_insert(0) += c.1;
-        *count.entry(c.0[1]).or_insert(0) += c.1;
-    }
-
-    *count.entry(poly.chars().nth(0).unwrap()).or_insert(0) += 1;
-    *count.entry(poly.chars().nth(poly.len() - 1).unwrap()).or_insert(0) += 1;
-
-    dbg!(count.values().min().unwrap() / 2);
-    dbg!(count.values().max().unwrap() / 2);
-
-    dbg!((count.values().max().unwrap() - count.values().min().unwrap()) / 2);
 }

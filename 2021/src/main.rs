@@ -4,6 +4,7 @@ use std::io;
 use std::cmp;
 use std::fmt;
 use regex::Regex;
+use std::collections::VecDeque;
 use std::collections::HashSet;
 use std::collections::HashMap;
 use std::collections::BinaryHeap;
@@ -12,6 +13,7 @@ use std::iter::FromIterator;
 use num::integer;
 use itertools::Itertools;
 use multiset::HashMultiSet;
+use hex;
 
 #[macro_use] extern crate lazy_static;
 #[macro_use] extern crate scan_fmt;
@@ -128,52 +130,121 @@ lazy_static! {
     static ref REGEX_TILE: regex::Regex = Regex::new(r"(e|w|ne|nw|se|sw)").unwrap();
 }
 
+#[derive(Debug)]
+struct Packet {
+    version: u32,
+    typ: u32,
+    data: PacketPayload,
+}
+
+#[derive(Debug)]
+enum PacketPayload {
+    Literal(u64),
+    Nested(Vec<Packet>),
+}
+
+fn consume(stream: &mut VecDeque<bool>, bits: u32) -> u32 {
+    let mut result = 0u32;
+    for i in 0..bits {
+        result <<= 1;
+        if stream.pop_front().unwrap() {
+            result += 1;
+        }
+    }
+
+    result
+}
+
+fn parsesingle(bitstream: &mut VecDeque<bool>) -> Packet {
+    let ver = consume(bitstream, 3);
+    let typ = consume(bitstream, 3);
+
+    if typ == 4 {
+        dbg!("t4");
+        let mut val = 0u64;
+        loop {
+            
+            let more = consume(bitstream, 1);
+            let chunk = consume(bitstream, 4);
+            val = (val << 4) + (chunk as u64);
+
+            dbg!(more);
+
+            if more == 0 {
+                break;
+            }
+        }
+        
+        dbg!(val);
+
+        Packet {
+            version: ver,
+            typ: typ,
+            data: PacketPayload::Literal(val),
+        }
+    } else {
+        if consume(bitstream, 1) == 0 {
+            let bits = consume(bitstream, 15);
+            let mut eaten = VecDeque::new();
+            for i in 0..bits {
+                eaten.push_back(bitstream.pop_front().unwrap());
+            }
+
+            Packet {
+                version: ver,
+                typ: typ,
+                data: PacketPayload::Nested(parse(&mut eaten)),
+            }
+        } else {
+            let packets = consume(bitstream, 11);
+            let mut pacvec = Vec::new();
+            for i in 0..packets {
+                pacvec.push(parsesingle(bitstream));
+            }
+
+            Packet {
+                version: ver,
+                typ: typ,
+                data: PacketPayload::Nested(pacvec),
+            }
+        }
+    }
+}
+
+fn parse(stream: &mut VecDeque<bool>) -> Vec<Packet> {
+    let mut rv = Vec::new();
+    while stream.len() > 7 {
+        dbg!(stream.len());
+        rv.push(parsesingle(stream));
+        dbg!(stream.len());
+    }
+
+    rv
+}
+
+impl Packet {
+    fn versum(&self) -> u32 {
+        self.version + match &self.data {
+            PacketPayload::Literal(_) => 0,
+            PacketPayload::Nested(packets) => packets.iter().map(|p| p.versum()).sum(),
+        }
+    }
+}
+
 fn main() {
-    let mut olines = read_lines().iter().map(|l| l.chars().map(|c| (c as i32 - '0' as i32) as u32).collect::<Vec<u32>>()).collect::<Vec<Vec<u32>>>();
-
-    let mut lines: Vec<Vec<u32>> = Vec::new();
-    for a in 0..5 {
-        for lin in olines.iter() {
-            let mut nlin = Vec::new();
-            for b in 0..5 {
-                nlin.extend(lin.iter().map(|v| (v - 1 + a + b) % 9 + 1));
-            }
-            lines.push(nlin);
+    let mut bytestream = hex::decode(&read_lines()[0]).unwrap();
+    let mut bitstream = VecDeque::new();
+    for b in bytestream.iter() {
+        for i in (0..8).rev() {
+            bitstream.push_back((b & (1 << i)) != 0);
         }
     }
 
-    let mut pos: BinaryHeap<(i32, i32, i32)> = BinaryHeap::new();
-    pos.push((0, 0, 0));
+    dbg!(&bytestream);
+    dbg!(&bitstream);
 
-    let dx = vec![0, 0, 1, -1];
-    let dy = vec![1, -1, 0, 0];
-    
-    loop {
-        let nx = pos.pop().unwrap();
+    let mut packets = parse(&mut bitstream);
+    dbg!(&packets);
 
-        //dbg!(&nx);
-
-        if nx.1 + 1 == lines.len() as i32 && nx.2 + 1 == lines[0].len() as i32 {
-            dbg!(nx.0);
-            break;
-        }
-
-        for t in 0..4 {
-            let tx = nx.1 + dx[t];
-            let ty = nx.2 + dy[t];
-
-            if tx < 0 || ty < 0 || tx >= lines.len() as i32 || ty >= lines[0].len() as i32 {
-                continue;
-            }
-
-            if lines[tx as usize][ty as usize] >= 100 {
-                continue;
-            }
-
-            let tc = nx.0 - lines[tx as usize][ty as usize] as i32;
-            lines[tx as usize][ty as usize] = 100;
-
-            pos.push((tc, tx, ty));
-        }
-    }
+    dbg!(packets.iter().map(|p| p.versum()).sum::<u32>());
 }

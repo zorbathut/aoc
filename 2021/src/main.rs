@@ -133,7 +133,7 @@ lazy_static! {
 #[derive(Debug)]
 struct Packet {
     version: u32,
-    typ: u32,
+    typ: Typ,
     data: PacketPayload,
 }
 
@@ -141,6 +141,18 @@ struct Packet {
 enum PacketPayload {
     Literal(u64),
     Nested(Vec<Packet>),
+}
+
+#[derive(Debug)]
+enum Typ {
+    Sum,
+    Product,
+    Minimum,
+    Maximum,
+    Literal,
+    GreaterThan,
+    LesserThan,
+    EqualTo,
 }
 
 fn consume(stream: &mut VecDeque<bool>, bits: u32) -> u32 {
@@ -153,6 +165,20 @@ fn consume(stream: &mut VecDeque<bool>, bits: u32) -> u32 {
     }
 
     result
+}
+
+fn pt(typ: u32) -> Typ {
+    match typ {
+        0 => Typ::Sum,
+        1 => Typ::Product,
+        2 => Typ::Minimum,
+        3 => Typ::Maximum,
+        4 => Typ::Literal,
+        5 => Typ::GreaterThan,
+        6 => Typ::LesserThan,
+        7 => Typ::EqualTo,
+        _ => unreachable!(),
+    }
 }
 
 fn parsesingle(bitstream: &mut VecDeque<bool>) -> Packet {
@@ -179,7 +205,7 @@ fn parsesingle(bitstream: &mut VecDeque<bool>) -> Packet {
 
         Packet {
             version: ver,
-            typ: typ,
+            typ: pt(typ),
             data: PacketPayload::Literal(val),
         }
     } else {
@@ -192,7 +218,7 @@ fn parsesingle(bitstream: &mut VecDeque<bool>) -> Packet {
 
             Packet {
                 version: ver,
-                typ: typ,
+                typ: pt(typ),
                 data: PacketPayload::Nested(parse(&mut eaten)),
             }
         } else {
@@ -204,7 +230,7 @@ fn parsesingle(bitstream: &mut VecDeque<bool>) -> Packet {
 
             Packet {
                 version: ver,
-                typ: typ,
+                typ: pt(typ),
                 data: PacketPayload::Nested(pacvec),
             }
         }
@@ -229,6 +255,27 @@ impl Packet {
             PacketPayload::Nested(packets) => packets.iter().map(|p| p.versum()).sum(),
         }
     }
+
+    fn eval(&self) -> u64 {
+        match &self.data {
+            PacketPayload::Literal(v) => *v,
+            PacketPayload::Nested(packets) => {
+                let mut peval = packets.iter().map(|p| p.eval()).collect::<Vec<u64>>();
+                let res = match &self.typ {
+                    Typ::Sum => peval.iter().sum(),
+                    Typ::Product => peval.iter().product(),
+                    Typ::Minimum => *peval.iter().min().unwrap(),
+                    Typ::Maximum => *peval.iter().max().unwrap(),
+                    Typ::Literal => unreachable!(),
+                    Typ::GreaterThan => if peval[0] > peval[1] { 1 } else { 0 },
+                    Typ::LesserThan => if peval[0] < peval[1] { 1 } else { 0 },
+                    Typ::EqualTo => if peval[0] == peval[1] { 1 } else { 0 },
+                };
+                dbg!(&self.typ, &peval, res);
+                res
+            }
+        }
+    }
 }
 
 fn main() {
@@ -240,11 +287,13 @@ fn main() {
         }
     }
 
-    dbg!(&bytestream);
-    dbg!(&bitstream);
+    //dbg!(&bytestream);
+    //dbg!(&bitstream);
 
     let mut packets = parse(&mut bitstream);
     dbg!(&packets);
 
+    dbg!(packets[0].eval());
     dbg!(packets.iter().map(|p| p.versum()).sum::<u32>());
+    dbg!(packets.len());
 }

@@ -131,21 +131,22 @@ lazy_static! {
 }
 
 fn main() {
-    let sx = 236;
+    /*let sx = 236;
     let ex = 262 + 1;
     let sy = -78;
-    let ey = -58 + 1;
+    let ey = -58 + 1;*/
 
-    /*let sx = 20;
+    let sx = 20;
     let ex = 30 + 1;
     let sy = -10;
-    let ey = -5 + 1;*/
+    let ey = -5 + 1;
     
-    let mut yv = 0;
+    let mut yv = -100;
+    let mut ct = 0;
     loop {
         //dbg!(yv);
 
-        for tx in 0..200 {
+        for tx in 0..300 {
             let mut x = 0;
             let mut y = 0;
 
@@ -160,6 +161,8 @@ fn main() {
                 //dbg!(x, y, vx, vy);
                 if x >= sx && x < ex && y >= sy && y < ey {
                     dbg!(yv, hy);
+                    ct += 1;
+                    dbg!(ct);
                     break;
                 }
 
@@ -175,4 +178,6 @@ fn main() {
 
         yv += 1;
     }
+
+    dbg!(ct);
 }

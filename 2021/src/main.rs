@@ -130,170 +130,49 @@ lazy_static! {
     static ref REGEX_TILE: regex::Regex = Regex::new(r"(e|w|ne|nw|se|sw)").unwrap();
 }
 
-#[derive(Debug)]
-struct Packet {
-    version: u32,
-    typ: Typ,
-    data: PacketPayload,
-}
-
-#[derive(Debug)]
-enum PacketPayload {
-    Literal(u64),
-    Nested(Vec<Packet>),
-}
-
-#[derive(Debug)]
-enum Typ {
-    Sum,
-    Product,
-    Minimum,
-    Maximum,
-    Literal,
-    GreaterThan,
-    LesserThan,
-    EqualTo,
-}
-
-fn consume(stream: &mut VecDeque<bool>, bits: u32) -> u32 {
-    let mut result = 0u32;
-    for i in 0..bits {
-        result <<= 1;
-        if stream.pop_front().unwrap() {
-            result += 1;
-        }
-    }
-
-    result
-}
-
-fn pt(typ: u32) -> Typ {
-    match typ {
-        0 => Typ::Sum,
-        1 => Typ::Product,
-        2 => Typ::Minimum,
-        3 => Typ::Maximum,
-        4 => Typ::Literal,
-        5 => Typ::GreaterThan,
-        6 => Typ::LesserThan,
-        7 => Typ::EqualTo,
-        _ => unreachable!(),
-    }
-}
-
-fn parsesingle(bitstream: &mut VecDeque<bool>) -> Packet {
-    let ver = consume(bitstream, 3);
-    let typ = consume(bitstream, 3);
-
-    if typ == 4 {
-        dbg!("t4");
-        let mut val = 0u64;
-        loop {
-            
-            let more = consume(bitstream, 1);
-            let chunk = consume(bitstream, 4);
-            val = (val << 4) + (chunk as u64);
-
-            dbg!(more);
-
-            if more == 0 {
-                break;
-            }
-        }
-        
-        dbg!(val);
-
-        Packet {
-            version: ver,
-            typ: pt(typ),
-            data: PacketPayload::Literal(val),
-        }
-    } else {
-        if consume(bitstream, 1) == 0 {
-            let bits = consume(bitstream, 15);
-            let mut eaten = VecDeque::new();
-            for i in 0..bits {
-                eaten.push_back(bitstream.pop_front().unwrap());
-            }
-
-            Packet {
-                version: ver,
-                typ: pt(typ),
-                data: PacketPayload::Nested(parse(&mut eaten)),
-            }
-        } else {
-            let packets = consume(bitstream, 11);
-            let mut pacvec = Vec::new();
-            for i in 0..packets {
-                pacvec.push(parsesingle(bitstream));
-            }
-
-            Packet {
-                version: ver,
-                typ: pt(typ),
-                data: PacketPayload::Nested(pacvec),
-            }
-        }
-    }
-}
-
-fn parse(stream: &mut VecDeque<bool>) -> Vec<Packet> {
-    let mut rv = Vec::new();
-    while stream.len() > 7 {
-        dbg!(stream.len());
-        rv.push(parsesingle(stream));
-        dbg!(stream.len());
-    }
-
-    rv
-}
-
-impl Packet {
-    fn versum(&self) -> u32 {
-        self.version + match &self.data {
-            PacketPayload::Literal(_) => 0,
-            PacketPayload::Nested(packets) => packets.iter().map(|p| p.versum()).sum(),
-        }
-    }
-
-    fn eval(&self) -> u64 {
-        match &self.data {
-            PacketPayload::Literal(v) => *v,
-            PacketPayload::Nested(packets) => {
-                let mut peval = packets.iter().map(|p| p.eval()).collect::<Vec<u64>>();
-                let res = match &self.typ {
-                    Typ::Sum => peval.iter().sum(),
-                    Typ::Product => peval.iter().product(),
-                    Typ::Minimum => *peval.iter().min().unwrap(),
-                    Typ::Maximum => *peval.iter().max().unwrap(),
-                    Typ::Literal => unreachable!(),
-                    Typ::GreaterThan => if peval[0] > peval[1] { 1 } else { 0 },
-                    Typ::LesserThan => if peval[0] < peval[1] { 1 } else { 0 },
-                    Typ::EqualTo => if peval[0] == peval[1] { 1 } else { 0 },
-                };
-                dbg!(&self.typ, &peval, res);
-                res
-            }
-        }
-    }
-}
-
 fn main() {
-    let mut bytestream = hex::decode(&read_lines()[0]).unwrap();
-    let mut bitstream = VecDeque::new();
-    for b in bytestream.iter() {
-        for i in (0..8).rev() {
-            bitstream.push_back((b & (1 << i)) != 0);
+    let sx = 236;
+    let ex = 262 + 1;
+    let sy = -78;
+    let ey = -58 + 1;
+
+    /*let sx = 20;
+    let ex = 30 + 1;
+    let sy = -10;
+    let ey = -5 + 1;*/
+    
+    let mut yv = 0;
+    loop {
+        //dbg!(yv);
+
+        for tx in 0..200 {
+            let mut x = 0;
+            let mut y = 0;
+
+            let mut vx = tx;
+            let mut vy = yv;
+
+            let mut hy = 0;
+
+            //dbg!("-----");
+
+            while y >= sy {
+                //dbg!(x, y, vx, vy);
+                if x >= sx && x < ex && y >= sy && y < ey {
+                    dbg!(yv, hy);
+                    break;
+                }
+
+                x += vx;
+                y += vy;
+
+                vx = cmp::max(0, vx - 1);
+                vy -= 1;
+
+                hy = cmp::max(hy, y);
+            }
         }
+
+        yv += 1;
     }
-
-    //dbg!(&bytestream);
-    //dbg!(&bitstream);
-
-    let mut packets = parse(&mut bitstream);
-    dbg!(&packets);
-
-    dbg!(packets[0].eval());
-    dbg!(packets.iter().map(|p| p.versum()).sum::<u32>());
-    dbg!(packets.len());
 }

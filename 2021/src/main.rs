@@ -14,6 +14,8 @@ use num::integer;
 use itertools::Itertools;
 use multiset::HashMultiSet;
 use hex;
+use pest::Parser;
+use pest_derive::Parser;
 
 #[macro_use] extern crate lazy_static;
 #[macro_use] extern crate scan_fmt;
@@ -130,54 +132,157 @@ lazy_static! {
     static ref REGEX_TILE: regex::Regex = Regex::new(r"(e|w|ne|nw|se|sw)").unwrap();
 }
 
-fn main() {
-    /*let sx = 236;
-    let ex = 262 + 1;
-    let sy = -78;
-    let ey = -58 + 1;*/
+#[derive(Parser)]
+#[grammar = "grammar.pest"]
+struct MyParser;
 
-    let sx = 20;
-    let ex = 30 + 1;
-    let sy = -10;
-    let ey = -5 + 1;
-    
-    let mut yv = -100;
-    let mut ct = 0;
+#[derive(Debug)]
+#[derive(Clone)]
+enum Element {
+    Open(),
+    Value(i64),
+    Close(),
+}
+
+fn redoos(k: Vec<Element>) -> Vec<Element> {
+    dbg!("redo");
+    let mut n = k;
     loop {
-        //dbg!(yv);
-
-        for tx in 0..300 {
-            let mut x = 0;
-            let mut y = 0;
-
-            let mut vx = tx;
-            let mut vy = yv;
-
-            let mut hy = 0;
-
-            //dbg!("-----");
-
-            while y >= sy {
-                //dbg!(x, y, vx, vy);
-                if x >= sx && x < ex && y >= sy && y < ey {
-                    dbg!(yv, hy);
-                    ct += 1;
-                    dbg!(ct);
-                    break;
-                }
-
-                x += vx;
-                y += vy;
-
-                vx = cmp::max(0, vx - 1);
-                vy -= 1;
-
-                hy = cmp::max(hy, y);
+        // search for explode
+        let mut depth = 0;
+        let mut explo = 0;
+        for i in 0..(n.len()) {
+            match n[i] {
+                Element::Open() => depth += 1,
+                Element::Close() => depth -= 1,
+                Element::Value(_) => if depth >= 5 { explo = i; break; },
             }
         }
 
-        yv += 1;
+        //dbg!(explo);
+
+        if explo != 0 {
+            // doing explosion
+            let lhs = if let Element::Value(v) = n[explo] { v } else { unreachable!() };
+            let rhs = if let Element::Value(v) = n[explo + 1] { v } else { unreachable!() };
+            for i in (0..(explo-1)).rev() {
+                match n[i] {
+                    Element::Value(v) => {
+                        n[i] = Element::Value(lhs + v);
+                        break;
+                    },
+                    _ => (),
+                }
+            }
+            for i in (explo+2)..(n.len()) {
+                match n[i] {
+                    Element::Value(v) => {
+                        n[i] = Element::Value(rhs + v);
+                        break;
+                    },
+                    _ => (),
+                }
+            }
+
+            n[explo - 1] = Element::Value(0);
+            n.remove(explo);    // value
+            n.remove(explo);    // value
+            n.remove(explo);    // close
+            continue;
+        }
+
+        // search for split
+        let mut splat = false;
+        for i in 0..(n.len()) {
+            match n[i] {
+                Element::Open() => (),
+                Element::Close() => (),
+                Element::Value(v) => if v >= 10 {
+                    n[i] = Element::Close();
+                    n.insert(i, Element::Value((v + 1) / 2));
+                    n.insert(i, Element::Value(v / 2));
+                    n.insert(i, Element::Open());
+                    splat = true;
+                    break;
+                },
+            }
+        }
+        if splat {
+            continue;
+        }
+
+        // done
+        break;
     }
 
-    dbg!(ct);
+    n
+}
+
+fn maggy(n: Vec<Element>) -> i64 {
+    if n.len() < 4 {
+        unreachable!();
+    } else if n.len() == 4 {
+        let lhs = if let Element::Value(v) = n[1] { v } else { unreachable!() };
+        let rhs = if let Element::Value(v) = n[2] { v } else { unreachable!() };
+
+        return lhs * 3 + rhs * 2;
+    } else {
+        let mut lhs = Vec::new();
+        let mut rhs = Vec::new();
+        let mut depth = 0;
+
+        for i in 0..(n.len()) {
+            match n[i] {
+                Element::Open() => depth += 1,
+                Element::Close() => {
+                    depth -= 1;
+                    if depth == 1 {
+                        lhs = n[1..(i + 1)].to_vec();
+                        rhs = n[(i + 1)..(n.len() - 1)].to_vec();
+                        break;
+                    }
+                },
+                Element::Value(_) => (),
+            }
+        }
+
+        dbg!(lhs.len(), rhs.len());
+        dbg!(&lhs);
+        dbg!(&rhs);
+
+        return maggy(lhs) * 3 + maggy(rhs) * 2;
+    }
+}
+
+fn main() {
+    let lines = read_lines();
+
+    let mut plin: Vec<Vec<Element>> = Vec::new();
+    for lin in lines {
+        let parse_result = MyParser::parse(Rule::element, &lin).unwrap().next().unwrap().into_inner();
+        plin.push(parse_result.filter(|e| e.as_rule() != Rule::comma).map(|e| {
+            match e.as_rule() {
+                Rule::open => Element::Open(),
+                Rule::close => Element::Close(),
+                Rule::number => Element::Value(str::parse(e.as_str()).unwrap()),
+                _ => unreachable!(),
+            }
+        }).collect());
+    }
+
+    dbg!(&plin);
+
+    let mut sum = plin[0].clone();
+    for i in 1..(plin.len()) {
+        let mut nusu = Vec::new();
+        nusu.push(Element::Open());
+        nusu.extend(sum);
+        nusu.extend(plin[i].clone());
+        nusu.push(Element::Close());
+        sum = redoos(nusu);
+    }
+
+    dbg!(&sum);
+
+    dbg!(maggy(sum));
 }

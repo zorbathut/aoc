@@ -145,7 +145,7 @@ enum Element {
 }
 
 fn redoos(k: Vec<Element>) -> Vec<Element> {
-    dbg!("redo");
+    //dbg!("redo");
     let mut n = k;
     loop {
         // search for explode
@@ -219,8 +219,9 @@ fn redoos(k: Vec<Element>) -> Vec<Element> {
 }
 
 fn maggy(n: Vec<Element>) -> i64 {
-    if n.len() < 4 {
-        unreachable!();
+    if n.len() == 1 {
+        let lhs = if let Element::Value(v) = n[0] { v } else { unreachable!() };
+        return lhs;
     } else if n.len() == 4 {
         let lhs = if let Element::Value(v) = n[1] { v } else { unreachable!() };
         let rhs = if let Element::Value(v) = n[2] { v } else { unreachable!() };
@@ -230,6 +231,8 @@ fn maggy(n: Vec<Element>) -> i64 {
         let mut lhs = Vec::new();
         let mut rhs = Vec::new();
         let mut depth = 0;
+
+        //dbg!(&n);
 
         for i in 0..(n.len()) {
             match n[i] {
@@ -242,16 +245,32 @@ fn maggy(n: Vec<Element>) -> i64 {
                         break;
                     }
                 },
-                Element::Value(_) => (),
+                Element::Value(_) => {
+                    if depth == 1 {
+                        lhs = n[1..(i + 1)].to_vec();
+                        rhs = n[(i + 1)..(n.len() - 1)].to_vec();
+                        break;
+                    }
+                },
             }
         }
 
-        dbg!(lhs.len(), rhs.len());
+        /*dbg!(lhs.len(), rhs.len());
         dbg!(&lhs);
-        dbg!(&rhs);
+        dbg!(&rhs);*/
 
         return maggy(lhs) * 3 + maggy(rhs) * 2;
     }
+}
+
+fn sum(lhs: &Vec<Element>, rhs: &Vec<Element>) -> Vec<Element> {
+    let mut nusu = Vec::new();
+    nusu.push(Element::Open());
+    nusu.extend(lhs.clone());
+    nusu.extend(rhs.clone());
+    nusu.push(Element::Close());
+
+    redoos(nusu)
 }
 
 fn main() {
@@ -272,17 +291,16 @@ fn main() {
 
     dbg!(&plin);
 
-    let mut sum = plin[0].clone();
-    for i in 1..(plin.len()) {
-        let mut nusu = Vec::new();
-        nusu.push(Element::Open());
-        nusu.extend(sum);
-        nusu.extend(plin[i].clone());
-        nusu.push(Element::Close());
-        sum = redoos(nusu);
+    let mut best = 0;
+    for x in 0..plin.len() {
+        for y in 0..plin.len() {
+            let amag = maggy(sum(&plin[x], &plin[y]));
+            let bmag = maggy(sum(&plin[y], &plin[x]));
+
+            best = cmp::max(best, amag);
+            best = cmp::max(best, bmag);
+        }
     }
 
-    dbg!(&sum);
-
-    dbg!(maggy(sum));
+    dbg!(best);
 }

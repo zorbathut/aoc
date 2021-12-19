@@ -128,179 +128,114 @@ impl StdinExt for io::Stdin {
     }
 }
 
-lazy_static! {
-    static ref REGEX_TILE: regex::Regex = Regex::new(r"(e|w|ne|nw|se|sw)").unwrap();
-}
+fn transform(pt: (i32, i32, i32), rot: i32, trans: (i32, i32, i32)) -> (i32, i32, i32) {
+    let xflip = ((rot / 1) % 2) == 1;
+    let yflip = ((rot / 2) % 2) == 1;
+    let zflip = ((rot / 4) % 2) == 1;
+    let permu = rot / 8;
 
-#[derive(Parser)]
-#[grammar = "grammar.pest"]
-struct MyParser;
-
-#[derive(Debug)]
-#[derive(Clone)]
-enum Element {
-    Open(),
-    Value(i64),
-    Close(),
-}
-
-fn redoos(k: Vec<Element>) -> Vec<Element> {
-    //dbg!("redo");
-    let mut n = k;
-    loop {
-        // search for explode
-        let mut depth = 0;
-        let mut explo = 0;
-        for i in 0..(n.len()) {
-            match n[i] {
-                Element::Open() => depth += 1,
-                Element::Close() => depth -= 1,
-                Element::Value(_) => if depth >= 5 { explo = i; break; },
-            }
-        }
-
-        //dbg!(explo);
-
-        if explo != 0 {
-            // doing explosion
-            let lhs = if let Element::Value(v) = n[explo] { v } else { unreachable!() };
-            let rhs = if let Element::Value(v) = n[explo + 1] { v } else { unreachable!() };
-            for i in (0..(explo-1)).rev() {
-                match n[i] {
-                    Element::Value(v) => {
-                        n[i] = Element::Value(lhs + v);
-                        break;
-                    },
-                    _ => (),
-                }
-            }
-            for i in (explo+2)..(n.len()) {
-                match n[i] {
-                    Element::Value(v) => {
-                        n[i] = Element::Value(rhs + v);
-                        break;
-                    },
-                    _ => (),
-                }
-            }
-
-            n[explo - 1] = Element::Value(0);
-            n.remove(explo);    // value
-            n.remove(explo);    // value
-            n.remove(explo);    // close
-            continue;
-        }
-
-        // search for split
-        let mut splat = false;
-        for i in 0..(n.len()) {
-            match n[i] {
-                Element::Open() => (),
-                Element::Close() => (),
-                Element::Value(v) => if v >= 10 {
-                    n[i] = Element::Close();
-                    n.insert(i, Element::Value((v + 1) / 2));
-                    n.insert(i, Element::Value(v / 2));
-                    n.insert(i, Element::Open());
-                    splat = true;
-                    break;
-                },
-            }
-        }
-        if splat {
-            continue;
-        }
-
-        // done
-        break;
+    let mut tf = pt;
+    match permu {
+        0 => tf = (tf.0, tf.1, tf.2),
+        1 => tf = (tf.0, tf.2, tf.1),
+        2 => tf = (tf.1, tf.0, tf.2),
+        3 => tf = (tf.1, tf.2, tf.0),
+        4 => tf = (tf.2, tf.0, tf.1),
+        5 => tf = (tf.2, tf.1, tf.0),
+        _ => unreachable!(),
     }
+    if xflip { tf.0 = -tf.0; }
+    if yflip { tf.1 = -tf.1; }
+    if zflip { tf.2 = -tf.2; }
 
-    n
-}
-
-fn maggy(n: Vec<Element>) -> i64 {
-    if n.len() == 1 {
-        let lhs = if let Element::Value(v) = n[0] { v } else { unreachable!() };
-        return lhs;
-    } else if n.len() == 4 {
-        let lhs = if let Element::Value(v) = n[1] { v } else { unreachable!() };
-        let rhs = if let Element::Value(v) = n[2] { v } else { unreachable!() };
-
-        return lhs * 3 + rhs * 2;
-    } else {
-        let mut lhs = Vec::new();
-        let mut rhs = Vec::new();
-        let mut depth = 0;
-
-        //dbg!(&n);
-
-        for i in 0..(n.len()) {
-            match n[i] {
-                Element::Open() => depth += 1,
-                Element::Close() => {
-                    depth -= 1;
-                    if depth == 1 {
-                        lhs = n[1..(i + 1)].to_vec();
-                        rhs = n[(i + 1)..(n.len() - 1)].to_vec();
-                        break;
-                    }
-                },
-                Element::Value(_) => {
-                    if depth == 1 {
-                        lhs = n[1..(i + 1)].to_vec();
-                        rhs = n[(i + 1)..(n.len() - 1)].to_vec();
-                        break;
-                    }
-                },
-            }
-        }
-
-        /*dbg!(lhs.len(), rhs.len());
-        dbg!(&lhs);
-        dbg!(&rhs);*/
-
-        return maggy(lhs) * 3 + maggy(rhs) * 2;
-    }
-}
-
-fn sum(lhs: &Vec<Element>, rhs: &Vec<Element>) -> Vec<Element> {
-    let mut nusu = Vec::new();
-    nusu.push(Element::Open());
-    nusu.extend(lhs.clone());
-    nusu.extend(rhs.clone());
-    nusu.push(Element::Close());
-
-    redoos(nusu)
+    (tf.0 + trans.0, tf.1 + trans.1, tf.2 + trans.2)
 }
 
 fn main() {
     let lines = read_lines();
 
-    let mut plin: Vec<Vec<Element>> = Vec::new();
-    for lin in lines {
-        let parse_result = MyParser::parse(Rule::element, &lin).unwrap().next().unwrap().into_inner();
-        plin.push(parse_result.filter(|e| e.as_rule() != Rule::comma).map(|e| {
-            match e.as_rule() {
-                Rule::open => Element::Open(),
-                Rule::close => Element::Close(),
-                Rule::number => Element::Value(str::parse(e.as_str()).unwrap()),
-                _ => unreachable!(),
+    let mut skanners = Vec::new();
+    {
+        let mut skaen = Vec::new();
+        for lin in lines {
+            if lin == "" {
+            } else if lin.chars().nth(1).unwrap() == '-' {
+                if skaen.len() > 0 {
+                    skanners.push(skaen);
+                    skaen = Vec::new();
+                }
+            } else if let Ok((x, y, z)) = scan_fmt!(&lin, "{},{},{}", i32, i32, i32) {
+                skaen.push((x, y, z));
+            } else {
+                unreachable!();
             }
-        }).collect());
-    }
+        }
 
-    dbg!(&plin);
-
-    let mut best = 0;
-    for x in 0..plin.len() {
-        for y in 0..plin.len() {
-            let amag = maggy(sum(&plin[x], &plin[y]));
-            let bmag = maggy(sum(&plin[y], &plin[x]));
-
-            best = cmp::max(best, amag);
-            best = cmp::max(best, bmag);
+        if skaen.len() > 0 {
+            skanners.push(skaen);
         }
     }
 
-    dbg!(best);
+    dbg!(skanners.len());
+
+    let mut pointos: HashSet<(i32, i32, i32)> = HashSet::new();
+    for pos in &skanners[0] {
+        pointos.insert(*pos);
+    }
+
+    let mut handled: HashSet<usize> = HashSet::new();
+    handled.insert(0);
+
+    while handled.len() < skanners.len() {
+        for dst in 0..skanners.len() {
+            if handled.contains(&dst) {
+                continue;
+            }
+
+            let mut inserter = HashSet::new();
+            
+            dbg!(dst);
+            let rhs = &skanners[dst];
+            for rot in 0..48 {
+                for srcpivot in &pointos {
+                    for dstpivot in rhs {
+                        let mut trans = transform(*dstpivot, rot, (0, 0, 0));
+                        trans.0 = srcpivot.0 - trans.0;
+                        trans.1 = srcpivot.1 - trans.1;
+                        trans.2 = srcpivot.2 - trans.2;
+
+                        let mut matches = 0;
+                        for target in rhs {
+                            let rs = transform(*target, rot, trans);
+                            if pointos.contains(&rs) {
+                                matches += 1;
+                            }
+                        }
+                        
+                        if matches >= 6 {
+                            dbg!("----------------------", "good!", matches, dst, transform((0, 0, 0), rot, trans), rot, srcpivot, dstpivot, trans);
+                            handled.insert(dst);
+                            for target in rhs {
+                                inserter.insert(transform(*target, rot, trans));
+                            }
+                            break;
+                        }
+                    }
+                    if inserter.len() > 0 {
+                        break;
+                    }
+                }
+                if inserter.len() > 0 {
+                    break;
+                }
+            }
+
+            for elem in inserter {
+                pointos.insert(elem);
+            }
+        }
+    }
+
+    dbg!(pointos.len());
+    
 }

@@ -186,6 +186,8 @@ fn main() {
     let mut handled: HashSet<usize> = HashSet::new();
     handled.insert(0);
 
+    let mut scanos: HashSet<(i32, i32, i32)> = HashSet::new();
+
     while handled.len() < skanners.len() {
         for dst in 0..skanners.len() {
             if handled.contains(&dst) {
@@ -215,6 +217,7 @@ fn main() {
                         if matches >= 6 {
                             dbg!("----------------------", "good!", matches, dst, transform((0, 0, 0), rot, trans), rot, srcpivot, dstpivot, trans);
                             handled.insert(dst);
+                            scanos.insert(transform((0, 0, 0), rot, trans));
                             for target in rhs {
                                 inserter.insert(transform(*target, rot, trans));
                             }
@@ -238,4 +241,11 @@ fn main() {
 
     dbg!(pointos.len());
     
+    let mut best = 0;
+    for lhs in &scanos {
+        for rhs in &scanos {
+            best = cmp::max(best, (lhs.0 - rhs.0).abs() + (lhs.1 - rhs.1).abs() + (lhs.2 - rhs.2).abs())
+        }
+    }
+    dbg!(best);
 }

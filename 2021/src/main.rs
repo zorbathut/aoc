@@ -128,124 +128,43 @@ impl StdinExt for io::Stdin {
     }
 }
 
-fn transform(pt: (i32, i32, i32), rot: i32, trans: (i32, i32, i32)) -> (i32, i32, i32) {
-    let xflip = ((rot / 1) % 2) == 1;
-    let yflip = ((rot / 2) % 2) == 1;
-    let zflip = ((rot / 4) % 2) == 1;
-    let permu = rot / 8;
-
-    let mut tf = pt;
-    match permu {
-        0 => tf = (tf.0, tf.1, tf.2),
-        1 => tf = (tf.0, tf.2, tf.1),
-        2 => tf = (tf.1, tf.0, tf.2),
-        3 => tf = (tf.1, tf.2, tf.0),
-        4 => tf = (tf.2, tf.0, tf.1),
-        5 => tf = (tf.2, tf.1, tf.0),
-        _ => unreachable!(),
-    }
-    if xflip { tf.0 = -tf.0; }
-    if yflip { tf.1 = -tf.1; }
-    if zflip { tf.2 = -tf.2; }
-
-    (tf.0 + trans.0, tf.1 + trans.1, tf.2 + trans.2)
-}
-
 fn main() {
     let lines = read_lines();
 
-    let mut skanners = Vec::new();
-    {
-        let mut skaen = Vec::new();
-        for lin in lines {
-            if lin == "" {
-            } else if lin.chars().nth(1).unwrap() == '-' {
-                if skaen.len() > 0 {
-                    skanners.push(skaen);
-                    skaen = Vec::new();
-                }
-            } else if let Ok((x, y, z)) = scan_fmt!(&lin, "{},{},{}", i32, i32, i32) {
-                skaen.push((x, y, z));
-            } else {
-                unreachable!();
-            }
-        }
-
-        if skaen.len() > 0 {
-            skanners.push(skaen);
-        }
-    }
-
-    dbg!(skanners.len());
-
-    let mut pointos: HashSet<(i32, i32, i32)> = HashSet::new();
-    for pos in &skanners[0] {
-        pointos.insert(*pos);
-    }
-
-    let mut handled: HashSet<usize> = HashSet::new();
-    handled.insert(0);
-
-    let mut scanos: HashSet<(i32, i32, i32)> = HashSet::new();
-
-    while handled.len() < skanners.len() {
-        for dst in 0..skanners.len() {
-            if handled.contains(&dst) {
-                continue;
-            }
-
-            let mut inserter = HashSet::new();
-            
-            dbg!(dst);
-            let rhs = &skanners[dst];
-            for rot in 0..48 {
-                for srcpivot in &pointos {
-                    for dstpivot in rhs {
-                        let mut trans = transform(*dstpivot, rot, (0, 0, 0));
-                        trans.0 = srcpivot.0 - trans.0;
-                        trans.1 = srcpivot.1 - trans.1;
-                        trans.2 = srcpivot.2 - trans.2;
-
-                        let mut matches = 0;
-                        for target in rhs {
-                            let rs = transform(*target, rot, trans);
-                            if pointos.contains(&rs) {
-                                matches += 1;
-                            }
-                        }
-                        
-                        if matches >= 6 {
-                            dbg!("----------------------", "good!", matches, dst, transform((0, 0, 0), rot, trans), rot, srcpivot, dstpivot, trans);
-                            handled.insert(dst);
-                            scanos.insert(transform((0, 0, 0), rot, trans));
-                            for target in rhs {
-                                inserter.insert(transform(*target, rot, trans));
-                            }
-                            break;
-                        }
-                    }
-                    if inserter.len() > 0 {
-                        break;
-                    }
-                }
-                if inserter.len() > 0 {
-                    break;
-                }
-            }
-
-            for elem in inserter {
-                pointos.insert(elem);
-            }
-        }
-    }
-
-    dbg!(pointos.len());
+    let mut lookup = lines[0].chars().map(|k| k == '#').enumerate().collect::<HashMap<usize, bool>>();
     
-    let mut best = 0;
-    for lhs in &scanos {
-        for rhs in &scanos {
-            best = cmp::max(best, (lhs.0 - rhs.0).abs() + (lhs.1 - rhs.1).abs() + (lhs.2 - rhs.2).abs())
+    let mut smap: Vec<Vec<bool>> = lines.iter().skip(2).map(|l| l.chars().map(|c| c == '#').collect()).collect();
+
+    let dx = [-1, 0, 1, -1, 0, 1, -1, 0, 1];
+    let dy = [-1, -1, -1, 0, 0, 0, 1, 1, 1];
+
+    for i in 0..50 {
+        let mut nmap = Vec::new();
+        for y in -1..(smap.len() as i32 + 1) {
+            let mut lin = Vec::new();
+            for x in -1..(smap[0].len() as i32 + 1) {
+                let mut ki: usize = 0;
+                for d in 0..9 {
+                    let tx = x + dx[d];
+                    let ty = y + dy[d];
+
+                    ki *= 2;
+
+                    if tx >= 0 && ty >= 0 && tx < smap[0].len() as i32 && ty < smap.len() as i32 {
+                        if smap[ty as usize][tx as usize] {
+                            ki += 1;
+                        }
+                    } else if i % 2 == 1 {
+                        ki += 1;
+                    }
+                }
+
+                lin.push(lookup[&ki]);
+            }
+            nmap.push(lin);
         }
+        smap = nmap;
     }
-    dbg!(best);
+
+    dbg!(smap.iter().map(|x| x.iter().map(|c| if *c { 1 } else { 0 }).sum::<i32>()).sum::<i32>());
 }

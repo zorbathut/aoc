@@ -128,43 +128,61 @@ impl StdinExt for io::Stdin {
     }
 }
 
+#[derive(PartialEq)]
+#[derive(Eq)]
+#[derive(Hash)]
+#[derive(Copy)]
+#[derive(Clone)]
+#[derive(Debug)]
+struct State {
+    p1: i32,
+    p2: i32,
+    p1s: i32,
+    p2s: i32,
+    p2t: i32,
+}
+
 fn main() {
-    let lines = read_lines();
+    let mut states: HashMap<State, i64> = HashMap::new();
+    states.insert(State { p1: 2, p2: 8, p1s: 0, p2s: 0, p2t: 0 }, 1);
 
-    let mut lookup = lines[0].chars().map(|k| k == '#').enumerate().collect::<HashMap<usize, bool>>();
-    
-    let mut smap: Vec<Vec<bool>> = lines.iter().skip(2).map(|l| l.chars().map(|c| c == '#').collect()).collect();
-
-    let dx = [-1, 0, 1, -1, 0, 1, -1, 0, 1];
-    let dy = [-1, -1, -1, 0, 0, 0, 1, 1, 1];
-
-    for i in 0..50 {
-        let mut nmap = Vec::new();
-        for y in -1..(smap.len() as i32 + 1) {
-            let mut lin = Vec::new();
-            for x in -1..(smap[0].len() as i32 + 1) {
-                let mut ki: usize = 0;
-                for d in 0..9 {
-                    let tx = x + dx[d];
-                    let ty = y + dy[d];
-
-                    ki *= 2;
-
-                    if tx >= 0 && ty >= 0 && tx < smap[0].len() as i32 && ty < smap.len() as i32 {
-                        if smap[ty as usize][tx as usize] {
-                            ki += 1;
+    for p1s in 0..21 {
+        for p2s in 0..21 {
+            for p1 in 1..=10 {
+                for p2 in 1..=10 {
+                    for p2t in 0..2 {
+                        let scx = State { p1: p1, p2: p2, p1s: p1s, p2s: p2s, p2t: p2t };
+                        if !states.contains_key(&scx) {
+                            continue;
                         }
-                    } else if i % 2 == 1 {
-                        ki += 1;
+
+                        let sct = states[&scx];
+
+                        for a in 1..=3 {
+                            for b in 1..=3 {
+                                for c in 1..=3 {
+                                    let mut result = scx.clone();
+                                    if p2t == 0 {
+                                        result.p1 = (result.p1 + a + b + c - 1) % 10 + 1;
+                                        result.p1s += result.p1;
+                                        result.p2t = 1;
+                                    } else {
+                                        result.p2 = (result.p2 + a + b + c - 1) % 10 + 1;
+                                        result.p2s += result.p2;
+                                        result.p2t = 0;
+                                    }
+                                    *states.entry(result).or_insert(0) += sct;
+                                }
+                            }
+                        }
                     }
                 }
-
-                lin.push(lookup[&ki]);
             }
-            nmap.push(lin);
         }
-        smap = nmap;
     }
 
-    dbg!(smap.iter().map(|x| x.iter().map(|c| if *c { 1 } else { 0 }).sum::<i32>()).sum::<i32>());
+    let p1w: i64 = states.iter().filter(|s| s.0.p1s >= 21).map(|s| s.1).sum();
+    let p2w: i64 = states.iter().filter(|s| s.0.p2s >= 21).map(|s| s.1).sum();
+
+    dbg!(p1w, p2w);
 }

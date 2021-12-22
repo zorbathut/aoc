@@ -134,55 +134,60 @@ impl StdinExt for io::Stdin {
 #[derive(Copy)]
 #[derive(Clone)]
 #[derive(Debug)]
-struct State {
-    p1: i32,
-    p2: i32,
-    p1s: i32,
-    p2s: i32,
-    p2t: i32,
+struct Boxo {
+    sx: i64,
+    ex: i64,
+    sy: i64,
+    ey: i64,
+    sz: i64,
+    ez: i64,
+}
+
+fn maybeadd(nubox: &mut Vec<Boxo>, bok: Boxo) {
+    if bok.sx < bok.ex && bok.sy < bok.ey && bok.sz < bok.ez {
+        nubox.push(bok);
+    }
 }
 
 fn main() {
-    let mut states: HashMap<State, i64> = HashMap::new();
-    states.insert(State { p1: 2, p2: 8, p1s: 0, p2s: 0, p2t: 0 }, 1);
+    let mut boxiz: Vec<Boxo> = Vec::new();
+    
+    for line in read_lines() {
+        if let Ok((mode, sx, mut ex, sy, mut ey, sz, mut ez)) = scan_fmt!(&line, "{} x={}..{},y={}..{},z={}..{}", String, i64, i64, i64, i64, i64, i64) { // types
+            ex += 1;
+            ey += 1;
+            ez += 1;
 
-    for p1s in 0..21 {
-        for p2s in 0..21 {
-            for p1 in 1..=10 {
-                for p2 in 1..=10 {
-                    for p2t in 0..2 {
-                        let scx = State { p1: p1, p2: p2, p1s: p1s, p2s: p2s, p2t: p2t };
-                        if !states.contains_key(&scx) {
-                            continue;
-                        }
+            // remove
+            let mut nubox = Vec::new();
+            for boxx in boxiz {
+                //dbg!(boxx, sx, ex, sy, ey, sz, ez);
+                if sx >= boxx.ex || sy >= boxx.ey || sz >= boxx.ez || ex <= boxx.sx || ey <= boxx.sy || ez <= boxx.sz {
+                    //dbg!("fakery");
+                    nubox.push(boxx);
+                } else {
+                    //dbg!("trubox");
+                    maybeadd(&mut nubox, Boxo { sx: boxx.sx, ex: sx, sy: boxx.sy, ey: boxx.ey, sz: boxx.sz, ez: boxx.ez });
+                    maybeadd(&mut nubox, Boxo { sx: ex, ex: boxx.ex, sy: boxx.sy, ey: boxx.ey, sz: boxx.sz, ez: boxx.ez });
 
-                        let sct = states[&scx];
+                    maybeadd(&mut nubox, Boxo { sx: cmp::max(sx, boxx.sx), ex: cmp::min(ex, boxx.ex), sy: boxx.sy, ey: sy, sz: boxx.sz, ez: boxx.ez });
+                    maybeadd(&mut nubox, Boxo { sx: cmp::max(sx, boxx.sx), ex: cmp::min(ex, boxx.ex), sy: ey, ey: boxx.ey, sz: boxx.sz, ez: boxx.ez });
 
-                        for a in 1..=3 {
-                            for b in 1..=3 {
-                                for c in 1..=3 {
-                                    let mut result = scx.clone();
-                                    if p2t == 0 {
-                                        result.p1 = (result.p1 + a + b + c - 1) % 10 + 1;
-                                        result.p1s += result.p1;
-                                        result.p2t = 1;
-                                    } else {
-                                        result.p2 = (result.p2 + a + b + c - 1) % 10 + 1;
-                                        result.p2s += result.p2;
-                                        result.p2t = 0;
-                                    }
-                                    *states.entry(result).or_insert(0) += sct;
-                                }
-                            }
-                        }
-                    }
+                    maybeadd(&mut nubox, Boxo { sx: cmp::max(sx, boxx.sx), ex: cmp::min(ex, boxx.ex), sy: cmp::max(sy, boxx.sy), ey: cmp::min(ey, boxx.ey), sz: boxx.sz, ez: sz });
+                    maybeadd(&mut nubox, Boxo { sx: cmp::max(sx, boxx.sx), ex: cmp::min(ex, boxx.ex), sy: cmp::max(sy, boxx.sy), ey: cmp::min(ey, boxx.ey), sz: ez, ez: boxx.ez });
                 }
             }
+
+            if mode == "on" {
+                nubox.push(Boxo { sx: sx, ex: ex, sy: sy, ey: ey, sz: sz, ez: ez });
+            }
+
+            boxiz = nubox;
+
+            //dbg!(&boxiz);
+            dbg!(boxiz.iter().map(|b| (b.ex - b.sx) * (b.ey - b.sy) * (b.ez - b.sz)).sum::<i64>());
+        } else {
+            unreachable!();
         }
     }
-
-    let p1w: i64 = states.iter().filter(|s| s.0.p1s >= 21).map(|s| s.1).sum();
-    let p2w: i64 = states.iter().filter(|s| s.0.p2s >= 21).map(|s| s.1).sum();
-
-    dbg!(p1w, p2w);
 }

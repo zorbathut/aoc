@@ -179,7 +179,7 @@ struct State {
     cost: i32,
 
     hallway: [Unit; 7],
-    boxes: [Unit; 8],
+    boxes: [Unit; 16],
 }
 
 fn main() {
@@ -187,7 +187,7 @@ fn main() {
     positions.push(State {
         cost: 0,
         hallway: [Unit::Empty, Unit::Empty, Unit::Empty, Unit::Empty, Unit::Empty, Unit::Empty, Unit::Empty],
-        boxes: [Unit::B, Unit::D, Unit::B, Unit::C, Unit::D, Unit::A, Unit::A, Unit::C],
+        boxes: [Unit::B, Unit::D, Unit::D, Unit::D, Unit::B, Unit::C, Unit::B, Unit::C, Unit::D, Unit::B, Unit::A, Unit::A, Unit::A, Unit::A, Unit::C, Unit::C],
         //boxes: [Unit::B, Unit::A, Unit::C, Unit::D, Unit::B, Unit::C, Unit::D, Unit::A],
     });
 
@@ -208,23 +208,23 @@ fn main() {
         let it = positions.pop().unwrap();
 
         // test
-        if it.boxes == [Unit::A, Unit::A, Unit::B, Unit::B, Unit::C, Unit::C, Unit::D, Unit::D] {
+        if it.boxes == [Unit::A, Unit::A, Unit::A, Unit::A, Unit::B, Unit::B, Unit::B, Unit::B, Unit::C, Unit::C, Unit::C, Unit::C, Unit::D, Unit::D, Unit::D, Unit::D] {
             dbg!(it.cost);
             break;
         }
 
         // box to hallway
-        for srcbox in 0..8 {
+        for srcbox in 0..16 {
             if it.boxes[srcbox] == Unit::Empty {
                 continue;
             }
 
-            if srcbox % 2 == 1 && it.boxes[srcbox - 1] != Unit::Empty {
+            if srcbox % 4 != 0 && it.boxes[srcbox - 1] != Unit::Empty {
                 continue;
             }
 
             for dsthall in 0..7 {
-                let mut srcs = boxtoslot[srcbox / 2];
+                let mut srcs = boxtoslot[srcbox / 4];
                 let mut dsts = halltoslot[dsthall];
 
                 if srcs > dsts {
@@ -244,7 +244,7 @@ fn main() {
                 }
 
                 if valid {
-                    let moves = dsts - srcs + 1 + srcbox % 2;
+                    let moves = dsts - srcs + 1 + srcbox % 4;
                     let cost = (moves as i32) * it.boxes[srcbox].cost();
 
                     let mut nit = it.clone();
@@ -263,16 +263,16 @@ fn main() {
         }
 
         // hallway to box
-        for dstbox in 0..8 {
+        for dstbox in 0..16 {
             if it.boxes[dstbox] != Unit::Empty {
                 continue;
             }
 
-            if dstbox % 2 == 0 && it.boxes[dstbox + 1] == Unit::Empty {
+            if dstbox % 4 != 3 && it.boxes[dstbox + 1] == Unit::Empty {
                 continue;
             }
 
-            if dstbox % 2 == 0 && it.boxes[dstbox + 1].bx() != dstbox / 2 {
+            if dstbox % 4 != 3 && it.boxes[dstbox + 1].bx() != dstbox / 4 {
                 continue;
             }
 
@@ -281,11 +281,11 @@ fn main() {
                     continue;
                 }
 
-                if dstbox / 2 != it.hallway[srchall].bx() {
+                if dstbox / 4 != it.hallway[srchall].bx() {
                     continue;
                 }
                 
-                let mut srcs = boxtoslot[dstbox / 2];
+                let mut srcs = boxtoslot[dstbox / 4];
                 let mut dsts = halltoslot[srchall];
 
                 if srcs > dsts {
@@ -309,7 +309,7 @@ fn main() {
                 }
 
                 if valid {
-                    let moves = dsts - srcs + 1 + dstbox % 2;
+                    let moves = dsts - srcs + 1 + dstbox % 4;
                     let cost = (moves as i32) * it.hallway[srchall].cost();
 
                     let mut nit = it.clone();

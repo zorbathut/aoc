@@ -128,66 +128,203 @@ impl StdinExt for io::Stdin {
     }
 }
 
+#[derive(PartialOrd)]
+#[derive(Ord)]
 #[derive(PartialEq)]
 #[derive(Eq)]
-#[derive(Hash)]
 #[derive(Copy)]
 #[derive(Clone)]
+#[derive(Hash)]
 #[derive(Debug)]
-struct Boxo {
-    sx: i64,
-    ex: i64,
-    sy: i64,
-    ey: i64,
-    sz: i64,
-    ez: i64,
+enum Unit {
+    Empty,
+    A,
+    B,
+    C,
+    D,
 }
 
-fn maybeadd(nubox: &mut Vec<Boxo>, bok: Boxo) {
-    if bok.sx < bok.ex && bok.sy < bok.ey && bok.sz < bok.ez {
-        nubox.push(bok);
+impl Unit {
+    fn cost(self) -> i32
+    {
+        match self {
+            Unit::A => 1,
+            Unit::B => 10,
+            Unit::C => 100,
+            Unit::D => 1000,
+            _ => unreachable!(),
+        }
+    }
+    fn bx(self) -> usize
+    {
+        match self {
+            Unit::A => 0,
+            Unit::B => 1,
+            Unit::C => 2,
+            Unit::D => 3,
+            _ => unreachable!(),
+        }
     }
 }
 
+#[derive(PartialOrd)]
+#[derive(Ord)]
+#[derive(PartialEq)]
+#[derive(Eq)]
+#[derive(Copy)]
+#[derive(Clone)]
+#[derive(Hash)]
+#[derive(Debug)]
+struct State {
+    cost: i32,
+
+    hallway: [Unit; 7],
+    boxes: [Unit; 8],
+}
+
 fn main() {
-    let mut boxiz: Vec<Boxo> = Vec::new();
-    
-    for line in read_lines() {
-        if let Ok((mode, sx, mut ex, sy, mut ey, sz, mut ez)) = scan_fmt!(&line, "{} x={}..{},y={}..{},z={}..{}", String, i64, i64, i64, i64, i64, i64) { // types
-            ex += 1;
-            ey += 1;
-            ez += 1;
+    let mut positions: BinaryHeap<State> = BinaryHeap::new();
+    positions.push(State {
+        cost: 0,
+        hallway: [Unit::Empty, Unit::Empty, Unit::Empty, Unit::Empty, Unit::Empty, Unit::Empty, Unit::Empty],
+        boxes: [Unit::B, Unit::D, Unit::B, Unit::C, Unit::D, Unit::A, Unit::A, Unit::C],
+        //boxes: [Unit::B, Unit::A, Unit::C, Unit::D, Unit::B, Unit::C, Unit::D, Unit::A],
+    });
 
-            // remove
-            let mut nubox = Vec::new();
-            for boxx in boxiz {
-                //dbg!(boxx, sx, ex, sy, ey, sz, ez);
-                if sx >= boxx.ex || sy >= boxx.ey || sz >= boxx.ez || ex <= boxx.sx || ey <= boxx.sy || ez <= boxx.sz {
-                    //dbg!("fakery");
-                    nubox.push(boxx);
-                } else {
-                    //dbg!("trubox");
-                    maybeadd(&mut nubox, Boxo { sx: boxx.sx, ex: sx, sy: boxx.sy, ey: boxx.ey, sz: boxx.sz, ez: boxx.ez });
-                    maybeadd(&mut nubox, Boxo { sx: ex, ex: boxx.ex, sy: boxx.sy, ey: boxx.ey, sz: boxx.sz, ez: boxx.ez });
+    let mut seen: HashMap<State, i32> = HashMap::new();
 
-                    maybeadd(&mut nubox, Boxo { sx: cmp::max(sx, boxx.sx), ex: cmp::min(ex, boxx.ex), sy: boxx.sy, ey: sy, sz: boxx.sz, ez: boxx.ez });
-                    maybeadd(&mut nubox, Boxo { sx: cmp::max(sx, boxx.sx), ex: cmp::min(ex, boxx.ex), sy: ey, ey: boxx.ey, sz: boxx.sz, ez: boxx.ez });
+    let halltoslot = [0, 1, 3, 5, 7, 9, 10];
+    let boxtoslot = [2, 4, 6, 8];
 
-                    maybeadd(&mut nubox, Boxo { sx: cmp::max(sx, boxx.sx), ex: cmp::min(ex, boxx.ex), sy: cmp::max(sy, boxx.sy), ey: cmp::min(ey, boxx.ey), sz: boxx.sz, ez: sz });
-                    maybeadd(&mut nubox, Boxo { sx: cmp::max(sx, boxx.sx), ex: cmp::min(ex, boxx.ex), sy: cmp::max(sy, boxx.sy), ey: cmp::min(ey, boxx.ey), sz: ez, ez: boxx.ez });
+    let slottohall = [0, 1, 100, 2, 100, 3, 100, 4, 100, 5, 6];
+
+    let mut ct = 0;
+    loop {
+        ct += 1;
+        if ct % 1000 == 0 {
+            dbg!(ct);
+        }
+
+        let it = positions.pop().unwrap();
+
+        // test
+        if it.boxes == [Unit::A, Unit::A, Unit::B, Unit::B, Unit::C, Unit::C, Unit::D, Unit::D] {
+            dbg!(it.cost);
+            break;
+        }
+
+        // box to hallway
+        for srcbox in 0..8 {
+            if it.boxes[srcbox] == Unit::Empty {
+                continue;
+            }
+
+            if srcbox % 2 == 1 && it.boxes[srcbox - 1] != Unit::Empty {
+                continue;
+            }
+
+            for dsthall in 0..7 {
+                let mut srcs = boxtoslot[srcbox / 2];
+                let mut dsts = halltoslot[dsthall];
+
+                if srcs > dsts {
+                    mem::swap(&mut srcs, &mut dsts);
+                }
+
+                let mut valid = true;
+                for slot in srcs..=dsts {
+                    if slottohall[slot] == 100 {
+                        continue;
+                    }
+
+                    if it.hallway[slottohall[slot]] != Unit::Empty {
+                        valid = false;
+                        break;
+                    }
+                }
+
+                if valid {
+                    let moves = dsts - srcs + 1 + srcbox % 2;
+                    let cost = (moves as i32) * it.boxes[srcbox].cost();
+
+                    let mut nit = it.clone();
+                    mem::swap(&mut nit.boxes[srcbox], &mut nit.hallway[dsthall]);
+                    nit.cost -= cost;
+
+                    let mut zit = nit.clone();
+                    zit.cost = 0;
+                    if !seen.contains_key(&zit) || seen[&zit] < nit.cost {
+                        positions.push(nit);
+                        seen.insert(zit, nit.cost);
+                        //dbg!("------------", it, srcbox, dsthall, nit);
+                    }
                 }
             }
+        }
 
-            if mode == "on" {
-                nubox.push(Boxo { sx: sx, ex: ex, sy: sy, ey: ey, sz: sz, ez: ez });
+        // hallway to box
+        for dstbox in 0..8 {
+            if it.boxes[dstbox] != Unit::Empty {
+                continue;
             }
 
-            boxiz = nubox;
+            if dstbox % 2 == 0 && it.boxes[dstbox + 1] == Unit::Empty {
+                continue;
+            }
 
-            //dbg!(&boxiz);
-            dbg!(boxiz.iter().map(|b| (b.ex - b.sx) * (b.ey - b.sy) * (b.ez - b.sz)).sum::<i64>());
-        } else {
-            unreachable!();
+            if dstbox % 2 == 0 && it.boxes[dstbox + 1].bx() != dstbox / 2 {
+                continue;
+            }
+
+            for srchall in 0..7 {
+                if it.hallway[srchall] == Unit::Empty {
+                    continue;
+                }
+
+                if dstbox / 2 != it.hallway[srchall].bx() {
+                    continue;
+                }
+                
+                let mut srcs = boxtoslot[dstbox / 2];
+                let mut dsts = halltoslot[srchall];
+
+                if srcs > dsts {
+                    mem::swap(&mut srcs, &mut dsts);
+                }
+
+                let mut valid = true;
+                for slot in srcs..=dsts {
+                    if slottohall[slot] == 100 {
+                        continue;
+                    }
+
+                    if slot == halltoslot[srchall] {
+                        continue;
+                    }
+
+                    if it.hallway[slottohall[slot]] != Unit::Empty {
+                        valid = false;
+                        break;
+                    }
+                }
+
+                if valid {
+                    let moves = dsts - srcs + 1 + dstbox % 2;
+                    let cost = (moves as i32) * it.hallway[srchall].cost();
+
+                    let mut nit = it.clone();
+                    mem::swap(&mut nit.hallway[srchall], &mut nit.boxes[dstbox]);
+                    nit.cost -= cost;
+
+                    let mut zit = nit.clone();
+                    zit.cost = 0;
+                    if !seen.contains_key(&zit) || seen[&zit] < nit.cost {
+                        positions.push(nit);
+                        seen.insert(zit, nit.cost);
+                        //dbg!("------------", it, srchall, dstbox, nit);
+                    }
+                }
+            }
         }
     }
 }

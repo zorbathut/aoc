@@ -136,35 +136,18 @@ impl StdinExt for io::Stdin {
 #[derive(Clone)]
 #[derive(Hash)]
 #[derive(Debug)]
-enum Unit {
-    Empty,
-    A,
-    B,
-    C,
-    D,
-}
-
-impl Unit {
-    fn cost(self) -> i32
-    {
-        match self {
-            Unit::A => 1,
-            Unit::B => 10,
-            Unit::C => 100,
-            Unit::D => 1000,
-            _ => unreachable!(),
-        }
-    }
-    fn bx(self) -> usize
-    {
-        match self {
-            Unit::A => 0,
-            Unit::B => 1,
-            Unit::C => 2,
-            Unit::D => 3,
-            _ => unreachable!(),
-        }
-    }
+enum Inst {
+    Inp(usize),
+    AddR(usize, usize),
+    MulR(usize, usize),
+    DivR(usize, usize),
+    ModR(usize, usize),
+    EqlR(usize, usize),
+    AddL(usize, i64),
+    MulL(usize, i64),
+    DivL(usize, i64),
+    ModL(usize, i64),
+    EqlL(usize, i64),
 }
 
 #[derive(PartialOrd)]
@@ -176,155 +159,85 @@ impl Unit {
 #[derive(Hash)]
 #[derive(Debug)]
 struct State {
-    cost: i32,
+    index: usize,
+    regs: [i64; 4],
+}
 
-    hallway: [Unit; 7],
-    boxes: [Unit; 16],
+fn run(commands: &Vec<Inst>, seen: &mut HashSet<State>, mut state: State, inp: &mut Vec<i64>) {
+    if state.index >= commands.len() {
+        if state.regs[3] == 0 {
+            dbg!(inp);
+        }
+        
+        return;
+    }
+
+    if seen.contains(&state) {
+        return;
+    }
+    seen.insert(state);
+
+    let ido = state.index;
+    state.index += 1;
+    match commands[ido] {
+        Inst::Inp(l) => {
+            for i in (1..=9) {
+                inp.push(i);
+                state.regs[l] = i;
+                run(commands, seen, state, inp);
+                inp.pop();
+            }
+
+            return;
+        },
+        Inst::AddR(l, r) => state.regs[l] += state.regs[r],
+        Inst::MulR(l, r) => state.regs[l] *= state.regs[r],
+        Inst::DivR(l, r) => state.regs[l] /= state.regs[r],
+        Inst::ModR(l, r) => state.regs[l] %= state.regs[r],
+        Inst::EqlR(l, r) => state.regs[l] = (if state.regs[l] == state.regs[r] { 1 } else { 0 }),
+        Inst::AddL(l, r) => state.regs[l] += r,
+        Inst::MulL(l, r) => state.regs[l] *= r,
+        Inst::DivL(l, r) => state.regs[l] /= r,
+        Inst::ModL(l, r) => state.regs[l] %= r,
+        Inst::EqlL(l, r) => state.regs[l] = (if state.regs[l] == r { 1 } else { 0 }),
+    }
+
+    run(commands, seen, state, inp);
 }
 
 fn main() {
-    let mut positions: BinaryHeap<State> = BinaryHeap::new();
-    positions.push(State {
-        cost: 0,
-        hallway: [Unit::Empty, Unit::Empty, Unit::Empty, Unit::Empty, Unit::Empty, Unit::Empty, Unit::Empty],
-        boxes: [Unit::B, Unit::D, Unit::D, Unit::D, Unit::B, Unit::C, Unit::B, Unit::C, Unit::D, Unit::B, Unit::A, Unit::A, Unit::A, Unit::A, Unit::C, Unit::C],
-        //boxes: [Unit::B, Unit::A, Unit::C, Unit::D, Unit::B, Unit::C, Unit::D, Unit::A],
-    });
-
-    let mut seen: HashMap<State, i32> = HashMap::new();
-
-    let halltoslot = [0, 1, 3, 5, 7, 9, 10];
-    let boxtoslot = [2, 4, 6, 8];
-
-    let slottohall = [0, 1, 100, 2, 100, 3, 100, 4, 100, 5, 6];
-
-    let mut ct = 0;
-    loop {
-        ct += 1;
-        if ct % 1000 == 0 {
-            dbg!(ct);
+    let commands: Vec<Inst> = read_lines().iter().map(|l| {
+        if let Ok((i,a,b)) = scan_fmt!(l, "{} {} {}", String, String, String) {
+            let ar = (a.chars().nth(0).unwrap() as i32 - 'w' as i32) as usize;
+            if let Ok(l) = b.parse::<i64>() {
+                match i.as_str() {
+                    "add" => Inst::AddL(ar, l),
+                    "mul" => Inst::MulL(ar, l),
+                    "div" => Inst::DivL(ar, l),
+                    "mod" => Inst::ModL(ar, l),
+                    "eql" => Inst::EqlL(ar, l),
+                    _ => unreachable!(),
+                }
+            } else {
+                let br = (b.chars().nth(0).unwrap() as i32 - 'w' as i32) as usize;
+                match i.as_str() {
+                    "add" => Inst::AddR(ar, br),
+                    "mul" => Inst::MulR(ar, br),
+                    "div" => Inst::DivR(ar, br),
+                    "mod" => Inst::ModR(ar, br),
+                    "eql" => Inst::EqlR(ar, br),
+                    _ => unreachable!(),
+                }
+            }
+        } else if let Ok((i,a)) = scan_fmt!(l, "{} {}", String, String) {
+            let ar = (a.chars().nth(0).unwrap() as i32 - 'w' as i32) as usize;
+            Inst::Inp(ar)
+        } else {
+            unreachable!();
         }
+    }).collect();
 
-        let it = positions.pop().unwrap();
-
-        // test
-        if it.boxes == [Unit::A, Unit::A, Unit::A, Unit::A, Unit::B, Unit::B, Unit::B, Unit::B, Unit::C, Unit::C, Unit::C, Unit::C, Unit::D, Unit::D, Unit::D, Unit::D] {
-            dbg!(it.cost);
-            break;
-        }
-
-        // box to hallway
-        for srcbox in 0..16 {
-            if it.boxes[srcbox] == Unit::Empty {
-                continue;
-            }
-
-            if srcbox % 4 != 0 && it.boxes[srcbox - 1] != Unit::Empty {
-                continue;
-            }
-
-            for dsthall in 0..7 {
-                let mut srcs = boxtoslot[srcbox / 4];
-                let mut dsts = halltoslot[dsthall];
-
-                if srcs > dsts {
-                    mem::swap(&mut srcs, &mut dsts);
-                }
-
-                let mut valid = true;
-                for slot in srcs..=dsts {
-                    if slottohall[slot] == 100 {
-                        continue;
-                    }
-
-                    if it.hallway[slottohall[slot]] != Unit::Empty {
-                        valid = false;
-                        break;
-                    }
-                }
-
-                if valid {
-                    let moves = dsts - srcs + 1 + srcbox % 4;
-                    let cost = (moves as i32) * it.boxes[srcbox].cost();
-
-                    let mut nit = it.clone();
-                    mem::swap(&mut nit.boxes[srcbox], &mut nit.hallway[dsthall]);
-                    nit.cost -= cost;
-
-                    let mut zit = nit.clone();
-                    zit.cost = 0;
-                    if !seen.contains_key(&zit) || seen[&zit] < nit.cost {
-                        positions.push(nit);
-                        seen.insert(zit, nit.cost);
-                        //dbg!("------------", it, srcbox, dsthall, nit);
-                    }
-                }
-            }
-        }
-
-        // hallway to box
-        for dstbox in 0..16 {
-            if it.boxes[dstbox] != Unit::Empty {
-                continue;
-            }
-
-            if dstbox % 4 != 3 && it.boxes[dstbox + 1] == Unit::Empty {
-                continue;
-            }
-
-            if dstbox % 4 != 3 && it.boxes[dstbox + 1].bx() != dstbox / 4 {
-                continue;
-            }
-
-            for srchall in 0..7 {
-                if it.hallway[srchall] == Unit::Empty {
-                    continue;
-                }
-
-                if dstbox / 4 != it.hallway[srchall].bx() {
-                    continue;
-                }
-                
-                let mut srcs = boxtoslot[dstbox / 4];
-                let mut dsts = halltoslot[srchall];
-
-                if srcs > dsts {
-                    mem::swap(&mut srcs, &mut dsts);
-                }
-
-                let mut valid = true;
-                for slot in srcs..=dsts {
-                    if slottohall[slot] == 100 {
-                        continue;
-                    }
-
-                    if slot == halltoslot[srchall] {
-                        continue;
-                    }
-
-                    if it.hallway[slottohall[slot]] != Unit::Empty {
-                        valid = false;
-                        break;
-                    }
-                }
-
-                if valid {
-                    let moves = dsts - srcs + 1 + dstbox % 4;
-                    let cost = (moves as i32) * it.hallway[srchall].cost();
-
-                    let mut nit = it.clone();
-                    mem::swap(&mut nit.hallway[srchall], &mut nit.boxes[dstbox]);
-                    nit.cost -= cost;
-
-                    let mut zit = nit.clone();
-                    zit.cost = 0;
-                    if !seen.contains_key(&zit) || seen[&zit] < nit.cost {
-                        positions.push(nit);
-                        seen.insert(zit, nit.cost);
-                        //dbg!("------------", it, srchall, dstbox, nit);
-                    }
-                }
-            }
-        }
-    }
+    let mut seen: HashSet<State> = HashSet::new();
+    let mut inp: Vec<i64> = Vec::new();
+    run(&commands, &mut seen, State { index: 0, regs: [0; 4] }, &mut inp);
 }

@@ -128,116 +128,55 @@ impl StdinExt for io::Stdin {
     }
 }
 
-#[derive(PartialOrd)]
-#[derive(Ord)]
-#[derive(PartialEq)]
-#[derive(Eq)]
-#[derive(Copy)]
-#[derive(Clone)]
-#[derive(Hash)]
-#[derive(Debug)]
-enum Inst {
-    Inp(usize),
-    AddR(usize, usize),
-    MulR(usize, usize),
-    DivR(usize, usize),
-    ModR(usize, usize),
-    EqlR(usize, usize),
-    AddL(usize, i64),
-    MulL(usize, i64),
-    DivL(usize, i64),
-    ModL(usize, i64),
-    EqlL(usize, i64),
-}
-
-#[derive(PartialOrd)]
-#[derive(Ord)]
-#[derive(PartialEq)]
-#[derive(Eq)]
-#[derive(Copy)]
-#[derive(Clone)]
-#[derive(Hash)]
-#[derive(Debug)]
-struct State {
-    index: usize,
-    regs: [i64; 4],
-}
-
-fn run(commands: &Vec<Inst>, seen: &mut HashSet<State>, mut state: State, inp: &mut Vec<i64>) {
-    if state.index >= commands.len() {
-        if state.regs[3] == 0 {
-            dbg!(inp);
-        }
-        
-        return;
-    }
-
-    if seen.contains(&state) {
-        return;
-    }
-    seen.insert(state);
-
-    let ido = state.index;
-    state.index += 1;
-    match commands[ido] {
-        Inst::Inp(l) => {
-            for i in (1..=9) {
-                inp.push(i);
-                state.regs[l] = i;
-                run(commands, seen, state, inp);
-                inp.pop();
-            }
-
-            return;
-        },
-        Inst::AddR(l, r) => state.regs[l] += state.regs[r],
-        Inst::MulR(l, r) => state.regs[l] *= state.regs[r],
-        Inst::DivR(l, r) => state.regs[l] /= state.regs[r],
-        Inst::ModR(l, r) => state.regs[l] %= state.regs[r],
-        Inst::EqlR(l, r) => state.regs[l] = (if state.regs[l] == state.regs[r] { 1 } else { 0 }),
-        Inst::AddL(l, r) => state.regs[l] += r,
-        Inst::MulL(l, r) => state.regs[l] *= r,
-        Inst::DivL(l, r) => state.regs[l] /= r,
-        Inst::ModL(l, r) => state.regs[l] %= r,
-        Inst::EqlL(l, r) => state.regs[l] = (if state.regs[l] == r { 1 } else { 0 }),
-    }
-
-    run(commands, seen, state, inp);
+#[derive(Copy, Clone, Eq, PartialEq)]
+enum State {
+    Empty,
+    East,
+    South,
 }
 
 fn main() {
-    let commands: Vec<Inst> = read_lines().iter().map(|l| {
-        if let Ok((i,a,b)) = scan_fmt!(l, "{} {} {}", String, String, String) {
-            let ar = (a.chars().nth(0).unwrap() as i32 - 'w' as i32) as usize;
-            if let Ok(l) = b.parse::<i64>() {
-                match i.as_str() {
-                    "add" => Inst::AddL(ar, l),
-                    "mul" => Inst::MulL(ar, l),
-                    "div" => Inst::DivL(ar, l),
-                    "mod" => Inst::ModL(ar, l),
-                    "eql" => Inst::EqlL(ar, l),
-                    _ => unreachable!(),
-                }
-            } else {
-                let br = (b.chars().nth(0).unwrap() as i32 - 'w' as i32) as usize;
-                match i.as_str() {
-                    "add" => Inst::AddR(ar, br),
-                    "mul" => Inst::MulR(ar, br),
-                    "div" => Inst::DivR(ar, br),
-                    "mod" => Inst::ModR(ar, br),
-                    "eql" => Inst::EqlR(ar, br),
-                    _ => unreachable!(),
+    let mut map: Vec<Vec<State>> = read_lines().iter().map(|l| {
+        l.chars().map(|c| match c {
+            '.' => State::Empty,
+            '>' => State::East,
+            'v' => State::South,
+            _ => unreachable!(),
+        }).collect()
+    }).collect();
+    
+    let mut ticks = 1;
+    loop {
+        let mut nmap: Vec<Vec<State>> = map.clone();
+        let mut change = false;
+
+        for y in 0..map.len() {
+            for x in 0..map[0].len() {
+                if map[y][x] == State::East && map[y][(x + 1) % map[0].len()] == State::Empty {
+                    nmap[y][x] = State::Empty;
+                    nmap[y][(x + 1) % map[0].len()] = State::East;
+                    change = true;
                 }
             }
-        } else if let Ok((i,a)) = scan_fmt!(l, "{} {}", String, String) {
-            let ar = (a.chars().nth(0).unwrap() as i32 - 'w' as i32) as usize;
-            Inst::Inp(ar)
-        } else {
-            unreachable!();
         }
-    }).collect();
+        map = nmap;
+        nmap = map.clone();
+        for y in 0..map.len() {
+            for x in 0..map[0].len() {
+                if map[y][x] == State::South && map[(y + 1) % map.len()][x] == State::Empty {
+                    nmap[y][x] = State::Empty;
+                    nmap[(y + 1) % map.len()][x] = State::South;
+                    change = true;
+                }
+            }
+        }
+        map = nmap;
 
-    let mut seen: HashSet<State> = HashSet::new();
-    let mut inp: Vec<i64> = Vec::new();
-    run(&commands, &mut seen, State { index: 0, regs: [0; 4] }, &mut inp);
+        if !change {
+            dbg!(ticks);
+            break;
+        }
+        ticks += 1;
+    }
+
 }
